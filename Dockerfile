@@ -9,7 +9,7 @@
 #
 # Credentials come in through --env-file. NOTHING here bakes one in: a .env
 # baked into an image is a credential published to everyone who can pull it.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
