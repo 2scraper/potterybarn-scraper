@@ -1,0 +1,5 @@
+# pyppeteer — a Python port of Puppeteer's API. Downloads its own Chromium on
+# first run. Effectively unmaintained upstream (its README points at
+# Playwright); kept for parity. Its pins conflict with playwright's (pyee) and
+# selenium's (urllib3): give it its own virtualenv.
+pyppeteer>=1.0.2

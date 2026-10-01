@@ -1,0 +1,63 @@
+{
+  "source": "potterybarn.com",
+  "mode": "product",
+  "row_class": "SkuRow",
+  "schema_version": "cb9e66f3691b",
+  "status": "complete",
+  "stop_reason": "completed",
+  "pages_requested": 2,
+  "pages_completed": 2,
+  "pages_failed": [],
+  "products": 1371,
+  "scope": {},
+  "start_url": "https://www.potterybarn.com/products/delaney-marble-end-table/",
+  "final_url": "https://www.potterybarn.com/products/york-slope-arm-deep-slipcovered-sofa-collection/",
+  "finished_at": "2026-09-24T14:08:25.172946+00:00",
+  "run_id": "e2d4ae84ba24",
+  "blocked": false,
+  "transport_facts": {
+    "transport": "http-curl",
+    "exit": "http://***:***@eu.proxy.rucaptcha.com:2334",
+    "pages_requested": 2,
+    "pages_completed": 2,
+    "failed_pages": [],
+    "states": [
+      "product",
+      "product"
+    ],
+    "products": [
+      {
+        "product_id": "delaney-marble-end-table",
+        "subsets_source": "inline",
+        "sku_check": {
+          "rows": 4,
+          "nla": 0,
+          "sku_count_stated": 4,
+          "closes": true
+        },
+        "aggregate_low_selling": 349.0,
+        "aggregate_high_selling": 698.0,
+        "currency": "USD"
+      },
+      {
+        "product_id": "york-slope-arm-deep-slipcovered-sofa-collection",
+        "subsets_source": "compressed",
+        "sku_check": {
+          "rows": 1367,
+          "nla": 93,
+          "sku_count_stated": 1274,
+          "closes": true
+        },
+        "aggregate_low_selling": 1679.0,
+        "aggregate_high_selling": 4199.0,
+        "currency": "USD"
+      }
+    ],
+    "blocked": false,
+    "transport_error": false,
+    "rotations": 0,
+    "start_url": "https://www.potterybarn.com/products/delaney-marble-end-table/",
+    "final_url": "https://www.potterybarn.com/products/york-slope-arm-deep-slipcovered-sofa-collection/"
+  },
+  "data_updated": true
+}

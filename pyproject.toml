@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "potterybarn-scraper"
+version = "1.0.0"
+description = "potterybarn.com listing and product scraper — the site's own listing API, per-SKU product pages over curl, Playwright/Selenium/Puppeteer or a Scraping Browser via CDP"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "2scraper" }]
+keywords = ["potterybarn", "ecommerce", "web-scraping", "scraper",
+            "price-monitoring", "constructor-io", "playwright", "selenium",
+            "puppeteer", "scraping-browser", "proxy", "captcha-solver"]
+# No "License :: OSI Approved" classifier: PEP 639's `license` above
+# supersedes it and modern setuptools refuses a build that carries both.
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+dependencies = ["beautifulsoup4>=4.12", "requests>=2.31", "Brotli>=1.1"]
+
+[project.urls]
+Homepage = "https://2captcha.com"
+Repository = "https://github.com/2scraper/potterybarn-scraper"
+Changelog = "https://github.com/2scraper/potterybarn-scraper/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+playwright = ["playwright>=1.44"]
+selenium = ["selenium>=4.15"]
+puppeteer = ["pyppeteer>=1.0.2"]
+
+[project.scripts]
+potterybarn-listing = "api_scraper:main"
+potterybarn-products = "http_scraper:main"
+potterybarn-browser = "browser_bridge:playwright_main"
+potterybarn-catalog = "catalog_walk:main"
+
+# A flat collection of top-level scripts, named explicitly.
+[tool.setuptools]
+py-modules = [
+    "api_scraper", "browser_bridge", "captcha_solver", "catalog_walk",
+    "diff_runs", "env_config", "fingerprint_client", "http_scraper",
+    "output_writer", "page_flow", "playwright_scraper", "product_parser",
+    "proxy_pool", "puppeteer_scraper", "selenium_scraper",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

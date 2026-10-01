@@ -1,0 +1,3 @@
+# Selenium engine. Cannot attach to an authenticated remote CDP endpoint and
+# cannot authenticate a proxy — see selenium_scraper.py.
+selenium>=4.15.0

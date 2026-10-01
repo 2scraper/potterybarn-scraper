@@ -1,0 +1,22 @@
+# potterybarn-scraper — core dependencies
+#
+#   pip install -r requirements.txt
+#
+# Enough for api_scraper.py (listings), http_scraper.py (product pages),
+# catalog_walk.py and the offline test suite. No browser is needed for any
+# of them.
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+# A GUIDED product page (sofas, sectionals) ships its SKUs Brotli-compressed
+# in `subsetsCompressedValue`; without this package those pages cannot be
+# read. Measured 2026-09-24: 1,367 SKUs on one sofa, 4,843 on another, all of
+# them inside the compressed value and none inline.
+Brotli>=1.1.0
+
+# A browser engine is OPTIONAL here, and was measured to be the weaker path on
+# this site (see README). If you want one, install exactly ONE, each in its
+# own virtualenv — their pins conflict (pyee <12 vs >=13, urllib3 <2 vs >=2):
+#
+#   pip install -r requirements-playwright.txt && playwright install chromium
+#   pip install -r requirements-selenium.txt
+#   pip install -r requirements-puppeteer.txt

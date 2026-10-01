@@ -1,0 +1,778 @@
+{
+ "response": {
+  "result_sources": {
+   "token_match": {
+    "count": 434
+   },
+   "embeddings_match": {
+    "count": 0
+   }
+  },
+  "facets": [
+   {
+    "display_name": "Size",
+    "name": "rugSize",
+    "type": "multiple",
+    "options": [
+     {
+      "status": "",
+      "count": 1,
+      "display_name": "Custom",
+      "value": "Custom",
+      "data": {}
+     }
+    ],
+    "hidden": false,
+    "data": {}
+   },
+   {
+    "display_name": "Type",
+    "name": "type",
+    "type": "multiple",
+    "options": [
+     {
+      "status": "",
+      "count": 161,
+      "display_name": "Sleeper",
+      "value": "Sleeper",
+      "data": {}
+     },
+     {
+      "status": "",
+      "count": 43,
+      "display_name": "Recliner",
+      "value": "Recliner",
+      "data": {}
+     },
+     {
+      "status": "",
+      "count": 10,
+      "display_name": "Settee",
+      "value": "Settee",
+      "data": {}
+     },
+     {
+      "status": "",
+      "count": 3,
+      "display_name": "Daybed",
+      "value": "Daybed",
+      "data": {}
+     },
+     {
+      "status": "",
+      "count": 2,
+      "display_name": "Modular",
+      "value": "Modular",
+      "data": {}
+     }
+    ],
+    "hidden": false,
+    "data": {}
+   }
+  ],
+  "groups": [
+   {
+    "group_id": "sofa",
+    "display_name": "Sofas",
+    "count": 434,
+    "data": {},
+    "children": [],
+    "parents": [
+     {
+      "display_name": "All",
+      "group_id": "all"
+     },
+     {
+      "display_name": "Furniture",
+      "group_id": "furniture"
+     }
+    ]
+   }
+  ],
+  "results": [
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "york-slope-arm-deep-slipcovered-sofa-collection",
+     "url": "https://www.potterybarn.com/products/york-slope-arm-deep-slipcovered-sofa-collection/",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "title": "York Slope Arm Deep Seat Slipcovered Sofa (60\"-108\")",
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202629/0076/york-slope-arm-deep-seat-slipcovered-sofa-60-108-c.jpg",
+     "leaderSku": 865462,
+     "lowestPrice": 1679,
+     "salePriceMin": 1679,
+     "highestPrice": 4199,
+     "swatchPrices": "865462;3199.00;3999.00;3199.00;3999.00;Regular~3495123;3199.00;3999.00;3199.00;3999.00;Regular~12906426;3199.00;3999.00;3199.00;3999.00;Regular~8068364;3199.00;3999.00;3199.00;3999.00;Regular~1709275;3399.00;4199.00;3399.00;4199.00;Regular~7416193;3399.00;4199.00;3399.00;4199.00;Regular~5847506;3399.00;4199.00;3399.00;4199.00;Regular~6093200;3399.00;4199.00;3399.00;4199.00;Regular~7920133;3399.00;4199.00;3399.00;4199.00;Regular~5375514;3399.00;4199.00;3399.00;4199.00;Regular",
+     "salePriceMax": 4199,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202629/0076/york-slope-arm-deep-seat-slipcovered-sofa-60-108-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0220/img278c.jpg",
+     "regularPriceMin": 1999,
+     "regularPriceMax": 4199,
+     "productPriceType": "Discount",
+     "moreSwatchesCount": 90,
+     "isDynamicAutoSlice": false,
+     "maxDiscountPercent": 20,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202629/0076/york-slope-arm-deep-seat-slipcovered-sofa-60-108-c.jpg",
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "seating-contract-grade-furniture",
+      "all-living-room",
+      "york-malcolm-sp21-living-room",
+      "york-folsom-living-room-fa20",
+      "all-in-stock",
+      "secret-all-products",
+      "all-furniture-test",
+      "york-malibu-living-room",
+      "sustainability-shop",
+      "sale-furniture",
+      "york-westbrook-living-room",
+      "furniture-bestsellers",
+      "york-cayman-living-room-sp25",
+      "all-small-spaces",
+      "york-malibu-living-room-s24",
+      "all-furniture",
+      "contract-grade-furniture",
+      "all-living-room-algo-test",
+      "registry-by-cat-furn",
+      "designed-assembled-america",
+      "york-weiss-living-room",
+      "exclusive-savings",
+      "all-living-room-furniture-test",
+      "slipcovered-furniture",
+      "contract-grade-sofas",
+      "sofa",
+      "york-folsom-living-room-h19",
+      "all-living-room-algo",
+      "york-everson-living-room-ho25",
+      "york-square-collection",
+      "york-westbrook-living-room-sp22",
+      "shop-all-exclusive-savings-test",
+      "bestsellers-all",
+      "furniture-registry-assortment",
+      "all-in-stock-furniture",
+      "registry-by-cat-uph"
+     ],
+     "skuid": 3281545,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0047/img480c.jpg",
+     "variation_id": "york-slope-arm-deep-slipcovered-sofa-collection-3281545"
+    },
+    "value": "York Slope Arm Deep Seat Slipcovered Sofa (60\"-108\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "buchanan-upholstered-sofa-collection",
+     "url": "https://www.potterybarn.com/products/buchanan-upholstered-sofa-collection/",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "title": "Buchanan Roll Arm Sofa (63\"-94\")",
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0006/buchanan-roll-arm-sofa-63-94-1-c.jpg",
+     "leaderSku": 12720827,
+     "lowestPrice": 999,
+     "salePriceMin": 999,
+     "highestPrice": 2799,
+     "swatchPrices": "12720827;2199.00;2599.00;2199.00;2599.00;Regular~12720835;2199.00;2599.00;2199.00;2599.00;Regular~13055546;2199.00;2599.00;2199.00;2599.00;Regular~12720850;2199.00;2599.00;2199.00;2599.00;Regular~12719753;2399.00;2799.00;2399.00;2799.00;Regular~12719738;2399.00;2799.00;2399.00;2799.00;Regular~12719720;2399.00;2799.00;2399.00;2799.00;Regular~12719746;2399.00;2399.00;2399.00;2399.00;Regular~12720801;2399.00;2799.00;2399.00;2799.00;Regular~12720819;2399.00;2799.00;2399.00;2799.00;Regular",
+     "salePriceMax": 2799,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0006/buchanan-roll-arm-sofa-63-94-1-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0911/img182c.jpg",
+     "regularPriceMin": 999,
+     "regularPriceMax": 2799,
+     "productPriceType": "Regular",
+     "moreSwatchesCount": 77,
+     "isDynamicAutoSlice": false,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0006/buchanan-roll-arm-sofa-63-94-1-c.jpg",
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"New Size\",\"displayType\":\"thumbnail\",\"startTime\":null,\"expirationTime\":null},{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "seating-contract-grade-furniture",
+      "all-living-room-furniture-test",
+      "all-living-room",
+      "buchanan-square-collection",
+      "contract-grade-sofas",
+      "all-new",
+      "sofa",
+      "all-in-stock",
+      "secret-all-products",
+      "all-furniture-test",
+      "registry-by-cat-furn",
+      "furniture-whats-new",
+      "all-living-room-algo",
+      "shop-all-exclusive-savings-test",
+      "furniture-bestsellers",
+      "bestsellers-all",
+      "all-in-stock-furniture",
+      "all-small-spaces",
+      "all-furniture",
+      "all-living-room-algo-test",
+      "designed-assembled-america"
+     ],
+     "skuid": 6796337,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202617/0093/img144c.jpg",
+     "variation_id": "buchanan-upholstered-sofa-collection-6796337"
+    },
+    "value": "Buchanan Roll Arm Sofa (63\"-94\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "pb-comfort-modern-square-arm-upholstered-sofa",
+     "url": "https://www.potterybarn.com/products/pb-comfort-modern-square-arm-upholstered-sofa/",
+     "title": "PB Comfort Modern Square Arm Sofa (62\"-118\")",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202638/0009/pb-comfort-modern-square-arm-sofa-62-118-1-c.jpg",
+     "leaderSku": 13712930,
+     "lowestPrice": 1359,
+     "salePriceMax": 4899,
+     "swatchPrices": "13712930;2799.00;4699.00;2799.00;4699.00;Regular~13712963;2799.00;4699.00;2799.00;4699.00;Regular~15740996;2799.00;4699.00;2799.00;4699.00;Regular~13713086;2799.00;4699.00;2799.00;4699.00;Regular~13709191;2999.00;4899.00;2999.00;4899.00;Regular~13708888;2999.00;4899.00;2999.00;4899.00;Regular~13708854;2999.00;4899.00;2999.00;4899.00;Regular~13708896;2999.00;4899.00;2999.00;4899.00;Regular~13708862;2399.00;3919.00;2999.00;4899.00;Discount~13712914;2999.00;4899.00;2999.00;4899.00;Regular",
+     "highestPrice": 4899,
+     "salePriceMin": 1359,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202638/0009/pb-comfort-modern-square-arm-sofa-62-118-1-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202630/0630/img455c.jpg",
+     "regularPriceMin": 1599,
+     "regularPriceMax": 4899,
+     "productPriceType": "Discount",
+     "moreSwatchesCount": 91,
+     "maxDiscountPercent": 40,
+     "isDynamicAutoSlice": false,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202638/0009/pb-comfort-modern-square-arm-sofa-62-118-1-c.jpg",
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "contract-grade-sofas",
+      "pb-comfort-all-collections",
+      "pb-comf-mod-malibu-living-room",
+      "secret-all-products",
+      "bestsellers-all",
+      "all-furniture",
+      "all-living-room",
+      "sofa",
+      "furniture-bestsellers",
+      "pb-comfort-modern",
+      "pb-comf-mod-rockport-living-room",
+      "sale-furniture",
+      "all-small-spaces",
+      "seating-contract-grade-furniture",
+      "all-in-stock",
+      "sustainability-shop",
+      "exclusive-savings",
+      "registry-by-cat-furn",
+      "all-in-stock-furniture",
+      "contract-grade-furniture",
+      "pb-comf-modern-olsom-living-room"
+     ],
+     "skuid": 8315488,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202618/0095/img1c.jpg",
+     "variation_id": "pb-comfort-modern-square-arm-upholstered-sofa-8315488"
+    },
+    "value": "PB Comfort Modern Square Arm Sofa (62\"-118\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "carlisle-upholstered-sofa-collection",
+     "url": "https://www.potterybarn.com/products/carlisle-upholstered-sofa-collection/",
+     "title": "Carlisle Sofa (60\"-90\")",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0008/carlisle-sofa-73-90-1-c.jpg",
+     "leaderSku": 16784969,
+     "lowestPrice": 1279,
+     "salePriceMax": 3699,
+     "swatchPrices": "16784969;2699.00;3499.00;2699.00;3499.00;Regular~16784977;1994.00;3499.00;2699.00;3499.00;Discount~16784951;2699.00;3499.00;2699.00;3499.00;Regular~16785297;2699.00;3499.00;2699.00;3499.00;Regular~16783284;2899.00;3699.00;2899.00;3699.00;Regular~16783268;2899.00;3699.00;2899.00;3699.00;Regular~16783250;2899.00;3699.00;2899.00;3699.00;Regular~16783276;2899.00;3699.00;2899.00;3699.00;Regular~16784936;2899.00;3699.00;2899.00;3699.00;Regular~16784944;2899.00;3699.00;2899.00;3699.00;Regular",
+     "highestPrice": 3699,
+     "salePriceMin": 1279,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0008/carlisle-sofa-73-90-1-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202636/0002/img223c.jpg",
+     "regularPriceMin": 1499,
+     "regularPriceMax": 3699,
+     "productPriceType": "Discount",
+     "moreSwatchesCount": 97,
+     "maxDiscountPercent": 40,
+     "isDynamicAutoSlice": false,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202632/0008/carlisle-sofa-73-90-1-c.jpg",
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"New Size\",\"displayType\":\"thumbnail\",\"startTime\":null,\"expirationTime\":null},{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "designed-assembled-america",
+      "contract-grade-sofas",
+      "secret-all-products",
+      "carlisle-malibu-living-room",
+      "bestsellers-all",
+      "all-living-room-algo",
+      "all-in-stock-furniture",
+      "all-furniture",
+      "all-living-room",
+      "sofa",
+      "carlisle-sofas-sectionals",
+      "furniture-bestsellers",
+      "carlisle-heritage-living-room",
+      "sale-furniture",
+      "shop-all-exclusive-savings-test",
+      "heritage-shop",
+      "seating-contract-grade-furniture",
+      "all-furniture-test",
+      "all-in-stock",
+      "sustainability-shop",
+      "exclusive-savings",
+      "all-living-room-furniture-test",
+      "registry-by-cat-furn",
+      "contract-grade-furniture",
+      "carlisle-folsom-living-room",
+      "all-living-room-algo-test"
+     ],
+     "skuid": 8465520,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202618/0529/img347c.jpg",
+     "variation_id": "carlisle-upholstered-sofa-collection-8465520"
+    },
+    "value": "Carlisle Sofa (60\"-90\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "york-slope-arm-slipcovered-sofa-collection",
+     "url": "https://www.potterybarn.com/products/york-slope-arm-slipcovered-sofa-collection/",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "title": "York Slope Arm Slipcovered Sofa (60\"-108\")",
+     "pipType": "guided",
+     "leaderSku": 5110917,
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0186/york-slope-arm-slipcovered-sofa-60-108-c.jpg",
+     "lowestPrice": 1499,
+     "swatchPrices": "5110917;2999.00;3799.00;2999.00;3799.00;Regular~4703797;2999.00;3799.00;2999.00;3799.00;Regular~12608006;2999.00;3799.00;2999.00;3799.00;Regular~9493784;2999.00;3799.00;2999.00;3799.00;Regular~2269580;3199.00;3999.00;3199.00;3999.00;Regular~6569174;3199.00;3999.00;3199.00;3999.00;Regular~4997051;3199.00;3999.00;3199.00;3999.00;Regular~3769693;3199.00;3999.00;3199.00;3999.00;Regular~1859012;2559.00;3199.00;3199.00;3999.00;Discount~5802991;3199.00;3999.00;3199.00;3999.00;Regular",
+     "salePriceMax": 3999,
+     "highestPrice": 3999,
+     "salePriceMin": 1499,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0186/york-slope-arm-slipcovered-sofa-60-108-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0318/img80c.jpg",
+     "regularPriceMax": 3999,
+     "regularPriceMin": 1499,
+     "productPriceType": "Discount",
+     "moreSwatchesCount": 95,
+     "isDynamicAutoSlice": false,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0186/york-slope-arm-slipcovered-sofa-60-108-c.jpg",
+     "maxDiscountPercent": 40,
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"},{\"message\":\"Certified Nontoxic\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2023-10-19T01:15:00-0700\",\"expirationTime\":\"2024-01-02T02:00:00-0800\"}]",
+     "group_ids": [
+      "york-trunk-living-room",
+      "all-furniture",
+      "all-small-spaces",
+      "york-square-collection",
+      "shop-all-exclusive-savings-test",
+      "all-living-room-algo-test",
+      "sustainability-shop",
+      "contract-grade-sofas",
+      "york-everson-living-room",
+      "seating-contract-grade-furniture",
+      "york-chapman-living-room",
+      "all-furniture-test",
+      "all-living-room-algo",
+      "designed-assembled-america",
+      "favorites-laineandlayne",
+      "york-oakleigh-living-room",
+      "york-farmhouse-living-room",
+      "york-everson-living-room-fa25",
+      "contract-grade-furniture",
+      "secret-all-products",
+      "furniture-bestsellers",
+      "exclusive-savings",
+      "registry-by-cat-furn",
+      "all-in-stock",
+      "slipcovered-furniture",
+      "all-living-room",
+      "all-in-stock-furniture",
+      "allison-holker-boss-favorites",
+      "bestsellers-all",
+      "sale-furniture",
+      "all-living-room-furniture-test",
+      "sofa"
+     ],
+     "skuid": 4573095,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202637/0160/img63c.jpg",
+     "variation_id": "york-slope-arm-slipcovered-sofa-collection-4573095"
+    },
+    "value": "York Slope Arm Slipcovered Sofa (60\"-108\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "josie-upholstered-sofa",
+     "url": "https://www.potterybarn.com/products/josie-upholstered-sofa/",
+     "title": "Josie Sofa (58\"-82\")",
+     "flags": [
+      "freePers",
+      "inHome"
+     ],
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202625/0003/josie-sofa-58-82-c.jpg",
+     "leaderSku": 3026907,
+     "lowestPrice": 499,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202639/0040/img214c.jpg",
+     "highestPrice": 1799,
+     "swatchPrices": "3026907;1099.00;1599.00;1099.00;1599.00;Regular~1492387;1099.00;1599.00;1099.00;1599.00;Regular~11746161;1099.00;1599.00;1099.00;1599.00;Regular~1736827;1099.00;1599.00;1099.00;1599.00;Regular~7351904;1299.00;1799.00;1299.00;1799.00;Regular~9243160;1299.00;1799.00;1299.00;1799.00;Regular~2493531;1099.00;1599.00;1099.00;1599.00;Regular~2979117;1099.00;1599.00;1099.00;1599.00;Regular~6589045;1299.00;1799.00;1299.00;1799.00;Regular~4688050;1299.00;1799.00;1299.00;1799.00;Regular",
+     "salePriceMax": 1799,
+     "salePriceMin": 499,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202625/0002/josie-sofa-58-82-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202639/0052/img291c.jpg",
+     "regularPriceMin": 499,
+     "regularPriceMax": 1799,
+     "productPriceType": "Regular",
+     "moreSwatchesCount": 42,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202625/0003/josie-sofa-58-82-c.jpg",
+     "isDynamicAutoSlice": false,
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "contract-grade-sofas",
+      "all-in-stock",
+      "secret-all-products",
+      "sustainability-shop",
+      "all-in-stock-furniture",
+      "sofa",
+      "bestsellers-all",
+      "contract-grade-furniture",
+      "seating-contract-grade-furniture",
+      "all-small-spaces",
+      "all-living-room",
+      "furniture-bestsellers",
+      "all-furniture",
+      "registry-by-cat-furn"
+     ],
+     "skuid": 2676957,
+     "variation_id": "josie-upholstered-sofa-2676957"
+    },
+    "value": "Josie Sofa (58\"-82\")",
+    "is_slotted": false
+   }
+  ],
+  "sort_options": [
+   {
+    "sort_by": "relevance",
+    "display_name": "Most Relevant",
+    "sort_order": "descending",
+    "hidden": false,
+    "status": "selected"
+   },
+   {
+    "sort_by": "lowestPrice",
+    "display_name": "Price (low to high)",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "lowestPrice",
+    "display_name": "Price (high to low)",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "highestPrice",
+    "display_name": "Price (low to high)",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "highestPrice",
+    "display_name": "Price (high to low)",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "name",
+    "display_name": "A - Z",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "name",
+    "display_name": "Z - A",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "newcore",
+    "display_name": "New",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   }
+  ],
+  "refined_content": [],
+  "total_num_results": 434,
+  "features": [
+   {
+    "feature_name": "a_a_test",
+    "display_name": "a_a_test",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "auto_generated_refined_query_rules",
+    "display_name": "Affinity Engine",
+    "enabled": true,
+    "variant": {
+     "name": "default_rules",
+     "display_name": "Default weights"
+    }
+   },
+   {
+    "feature_name": "custom_autosuggest_ui",
+    "display_name": "custom_autosuggest_ui",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_global_rules_browse",
+    "display_name": "Disables global refined filter rules with include_in_test=1 column",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_global_rules_search",
+    "display_name": "Disables global refined query rules with include_in_test=1 column",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_tag_rules",
+    "display_name": "disable test only tag rules",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "enable_campaigns_context_selector_expression",
+    "display_name": "enable campaigns context selector expression",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "enable_holdout_groups",
+    "display_name": "enable holdout groups",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "filter_items",
+    "display_name": "Filter-item boosts",
+    "enabled": true,
+    "variant": {
+     "name": "filter_items_w_atcs_and_purchases",
+     "display_name": "filter_items_w_atcs_and_purchases"
+    }
+   },
+   {
+    "feature_name": "manual_searchandizing",
+    "display_name": "Searchandizing",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "personalization",
+    "display_name": "Personalization",
+    "enabled": true,
+    "variant": {
+     "name": "default_personalization",
+     "display_name": "Default Personalization"
+    }
+   },
+   {
+    "feature_name": "query_items",
+    "display_name": "Learn To Rank",
+    "enabled": true,
+    "variant": {
+     "name": "query_items_ctr_enriched_prefix_and_ctr",
+     "display_name": "query_items_ctr_enriched_prefix_and_ctr"
+    }
+   },
+   {
+    "feature_name": "recommendations_merge_allowlist_rules",
+    "display_name": "recommendations_merge_allowlist_rules",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "refined_tag_rules",
+    "display_name": "refined_tag_rules",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_autocomplete",
+    "display_name": "reranker_transformations_autocomplete",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_browse",
+    "display_name": "reranker_transformations_browse",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_search",
+    "display_name": "reranker_transformations_search",
+    "enabled": true,
+    "variant": {
+     "name": "rpv_min_price_search",
+     "display_name": "rpv_min_price_search"
+    }
+   },
+   {
+    "feature_name": "use_ces_blending",
+    "display_name": "use_ces_blending",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_enriched_attributes_as_fuzzy_searchable",
+    "display_name": "use_enriched_attributes_as_fuzzy_searchable",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_llm_label_sort",
+    "display_name": "use_llm_label_sort",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_reranker_service_for_all",
+    "display_name": "[DEPRECATED] Use reranker service to rerank search and browse results",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_reranker_service_for_browse",
+    "display_name": "Use reranker service to rerank browse / collections results",
+    "enabled": true,
+    "variant": {
+     "name": "browse_reranker_v0_top400_250ms",
+     "display_name": "browse_reranker_v0_top400_250ms"
+    }
+   },
+   {
+    "feature_name": "use_reranker_service_for_search",
+    "display_name": "Use reranker service to rerank search results",
+    "enabled": true,
+    "variant": {
+     "name": "search_reranker_v0_top400",
+     "display_name": "search_reranker_v0_top400"
+    }
+   },
+   {
+    "feature_name": "variation_selection",
+    "display_name": "variation_selection",
+    "enabled": false,
+    "variant": null
+   }
+  ],
+  "related_searches": [],
+  "related_browse_pages": []
+ },
+ "result_id": "00000000-0000-0000-0000-000000000000",
+ "request": {
+  "sort_by": "relevance",
+  "sort_order": "descending",
+  "page": 1,
+  "num_results_per_page": 24,
+  "blacklist_rules": true,
+  "term": "",
+  "fmt_options": {
+   "groups_start": "current",
+   "groups_max_depth": 1,
+   "show_hidden_facets": false,
+   "show_hidden_fields": false,
+   "show_protected_facets": false
+  },
+  "section": "Products",
+  "features": {
+   "query_items": true,
+   "a_a_test": false,
+   "auto_generated_refined_query_rules": true,
+   "manual_searchandizing": true,
+   "personalization": true,
+   "filter_items": true,
+   "use_reranker_service_for_search": true,
+   "use_reranker_service_for_browse": true,
+   "use_reranker_service_for_all": false,
+   "custom_autosuggest_ui": false,
+   "disable_test_only_global_rules_search": false,
+   "disable_test_only_global_rules_browse": false,
+   "use_enriched_attributes_as_fuzzy_searchable": false,
+   "refined_tag_rules": true,
+   "enable_holdout_groups": false,
+   "reranker_transformations_browse": false,
+   "recommendations_merge_allowlist_rules": false,
+   "variation_selection": false,
+   "reranker_transformations_search": true,
+   "reranker_transformations_autocomplete": false,
+   "enable_campaigns_context_selector_expression": true,
+   "disable_test_only_tag_rules": false,
+   "use_ces_blending": false,
+   "use_llm_label_sort": false
+  },
+  "feature_variants": {
+   "query_items": "query_items_ctr_enriched_prefix_and_ctr",
+   "a_a_test": null,
+   "auto_generated_refined_query_rules": "default_rules",
+   "manual_searchandizing": null,
+   "personalization": "default_personalization",
+   "filter_items": "filter_items_w_atcs_and_purchases",
+   "use_reranker_service_for_search": "search_reranker_v0_top400",
+   "use_reranker_service_for_browse": "browse_reranker_v0_top400_250ms",
+   "use_reranker_service_for_all": null,
+   "custom_autosuggest_ui": null,
+   "disable_test_only_global_rules_search": null,
+   "disable_test_only_global_rules_browse": null,
+   "use_enriched_attributes_as_fuzzy_searchable": null,
+   "refined_tag_rules": null,
+   "enable_holdout_groups": null,
+   "reranker_transformations_browse": null,
+   "recommendations_merge_allowlist_rules": null,
+   "variation_selection": null,
+   "reranker_transformations_search": "rpv_min_price_search",
+   "reranker_transformations_autocomplete": null,
+   "enable_campaigns_context_selector_expression": null,
+   "disable_test_only_tag_rules": null,
+   "use_ces_blending": null,
+   "use_llm_label_sort": null
+  },
+  "searchandized_items": {},
+  "browse_filter_name": "group_id",
+  "browse_filter_value": "sofa"
+ }
+}

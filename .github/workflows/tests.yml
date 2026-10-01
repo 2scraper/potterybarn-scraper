@@ -1,0 +1,145 @@
+name: tests
+
+# Offline only. Nothing here touches potterybarn.com, its listing API or
+# 2captcha.com. The live side is canary.yml.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the floor pyproject.toml claims; claiming it untested is how
+        # a walrus operator or an `X | None` annotation ships.
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core dependencies (no engine, on purpose)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Byte-compile everything
+        run: python -m compileall -q .
+      - name: Offline test suite
+        run: python smoke_test.py
+      - name: Offline test suite, via pytest
+        run: |
+          pip install pytest
+          pytest -q
+      - name: Every CLI answers --help
+        run: python .github/ci_checks.py --help-check
+      - name: Committed sample output is real
+        run: python .github/ci_checks.py --sample-check
+      - name: Config reporter runs with no .env present
+        run: python env_config.py
+      - name: No credentials committed — the same scanner the hooks run
+        run: |
+          python tools/scan_secrets.py --worktree
+          python tools/scan_secrets.py --history
+      - name: The built wheel installs and works outside the checkout
+        run: |
+          python -m pip install --quiet build
+          python -m build --wheel
+          python -m venv /tmp/wheelcheck
+          /tmp/wheelcheck/bin/pip install --quiet dist/*.whl
+          cd /tmp
+          /tmp/wheelcheck/bin/python - <<'PY'
+          import sys
+          import product_parser as P, page_flow, output_writer as W
+          problems = []
+          if W.SOURCE_DEFAULT != "potterybarn.com":
+              problems.append("source is %r" % W.SOURCE_DEFAULT)
+          if P.robots_allows("https://www.potterybarn.com/shop/furniture/sofa/?N=1"):
+              problems.append("robots rules did not survive packaging (fail-open)")
+          if not P.robots_allows("https://www.potterybarn.com/products/delaney-marble-end-table/"):
+              problems.append("robots rules refuse an allowed product page")
+          if P.brotli is None:
+              problems.append("Brotli did not install with the wheel")
+          if not page_flow.should_rotate_exit("geo_redirect"):
+              problems.append("state policy did not survive packaging")
+          for problem in problems:
+              print("::error::%s" % problem)
+          sys.exit(1 if problems else 0)
+          PY
+          /tmp/wheelcheck/bin/potterybarn-listing --help > /dev/null
+          /tmp/wheelcheck/bin/potterybarn-products --help > /dev/null
+          /tmp/wheelcheck/bin/potterybarn-catalog --help > /dev/null
+          # The browser script on a base install (no [playwright] extra) must
+          # say what to install and exit 2 — not die with a traceback.
+          set +e
+          /tmp/wheelcheck/bin/potterybarn-browser --help 2> /tmp/browser.err
+          rc=$?
+          set -e
+          test "$rc" = "2" && grep -q "potterybarn-scraper\[playwright\]" /tmp/browser.err
+          echo "console scripts answer --help; potterybarn-browser explains the missing extra"
+
+  engine-smoke:
+    # One venv PER ENGINE, from its own requirements file: the three engines'
+    # pins are mutually unsatisfiable, and installed together pip may resolve
+    # the conflict with a version the repo does not support.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [playwright, puppeteer, selenium]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install core + the ${{ matrix.engine }} engine, in its own venv
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt -r requirements-${{ matrix.engine }}.txt
+      - name: The requirements files are self-consistent
+        run: .venv/bin/pip check
+      - name: Offline suite, and THIS engine must not be skipped
+        env:
+          EXPECT_NO_SKIPS_FOR: ${{ matrix.engine }}_scraper
+        run: .venv/bin/python smoke_test.py
+      - name: The ${{ matrix.engine }} CLI answers --help
+        run: .venv/bin/python ${{ matrix.engine }}_scraper.py --help > /dev/null
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the image
+        run: docker build -t potterybarn-scraper:ci .
+      - name: The default entrypoint runs
+        run: docker run --rm potterybarn-scraper:ci
+      - name: Every entrypoint answers --help inside the image
+        run: |
+          for cli in api_scraper.py http_scraper.py playwright_scraper.py catalog_walk.py diff_runs.py; do
+            docker run --rm potterybarn-scraper:ci "$cli" --help > /dev/null && echo "ok $cli"
+          done
+      - name: curl and Chromium are really in the image
+        run: |
+          docker run --rm --entrypoint curl potterybarn-scraper:ci --version | head -1
+          docker run --rm potterybarn-scraper:ci -c "
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              b = p.chromium.launch(); print('chromium', b.version); b.close()"
+      - name: The image does not run as root
+        run: test "$(docker run --rm --entrypoint id potterybarn-scraper:ci -u)" != "0"
+      - name: The image carries no credentials and no test material
+        run: |
+          bad=0
+          for f in .env .env.example smoke_test.py tests fixtures .git sample_output.json; do
+            if docker run --rm --entrypoint sh potterybarn-scraper:ci -c "test -e /app/$f"; then
+              echo "::error::$f is inside the image"; bad=1
+            fi
+          done
+          test "$bad" = "0" && echo "no .env, no suite, no fixtures in the image"

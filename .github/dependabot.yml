@@ -1,0 +1,16 @@
+# Weekly update PRs, so the lower-bound pins in requirements*.txt and the
+# action majors are re-tested by CI rather than drifting unnoticed.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly

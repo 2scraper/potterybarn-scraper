@@ -1,0 +1,11 @@
+name: Question
+description: How do I…, or does this scraper…
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Read README.md and TROUBLESHOOTING.md first — most answers are measured there.
+    validations:
+      required: true

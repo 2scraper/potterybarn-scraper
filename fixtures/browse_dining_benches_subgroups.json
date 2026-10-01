@@ -1,0 +1,503 @@
+{
+ "response": {
+  "result_sources": {
+   "token_match": {
+    "count": 72
+   },
+   "embeddings_match": {
+    "count": 0
+   }
+  },
+  "facets": [],
+  "groups": [
+   {
+    "group_id": "dining-benches",
+    "display_name": "Dining Benches & Banquettes",
+    "count": 72,
+    "data": {},
+    "children": [],
+    "parents": [
+     {
+      "display_name": "All",
+      "group_id": "all"
+     },
+     {
+      "display_name": "Furniture",
+      "group_id": "furniture"
+     }
+    ]
+   }
+  ],
+  "results": [
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "aldon-dining-bench-SPAF-finish-russet-oak-wood-finish",
+     "url": "https://www.potterybarn.com/products/aldon-dining-bench/?subGroupId=aldon-dining-bench-SPAF-finish-russet-oak-wood-finish",
+     "title": "Aldon Dining Bench (73\")",
+     "flags": [
+      "inHome"
+     ],
+     "pipType": "simple-buy",
+     "leaderSku": 7635365,
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0400/aldon-dining-bench-73-c.jpg",
+     "parentPid": "aldon-dining-bench",
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202634/0859/img1c.jpg",
+     "lowestPrice": 399.97,
+     "swatchPrices": "7635365;999.00;999.00;999.00;999.00;Regular~541705;399.97;399.97;999.00;999.00;Clearance",
+     "salePriceMin": 399.97,
+     "highestPrice": 999,
+     "salePriceMax": 999,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0400/aldon-dining-bench-73-1-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202634/0859/img1c.jpg",
+     "swatchOverrides": "7635365;aldon-dining-bench-SPAF-finish-russet-oak-wood-finish;Aldon Dining Bench (73\");https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0400/aldon-dining-bench-73-1-c.jpg;https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202634/0858/aldon-dining-bench-73-6-c.jpg~541705;aldon-dining-bench-SPAF-finish-remainder;Aldon Dining Bench (73\");https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202626/0013/aldon-dining-bench-73-c.jpg;https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0040/img82c.jpg",
+     "regularPriceMin": 999,
+     "regularPriceMax": 999,
+     "productPriceType": "Clearance",
+     "isDynamicAutoSlice": false,
+     "maxDiscountPercent": 60,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202635/0400/aldon-dining-bench-73-c.jpg",
+     "eligibleForQuickBuy": true,
+     "pipThumbnailMessages": "[{\"message\":\"New Finish\",\"displayType\":\"thumbnail\",\"startTime\":null,\"expirationTime\":null},{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "all-new",
+      "all-in-stock",
+      "exclusive-savings",
+      "shop-all-clearance",
+      "aldon-furniture-collection",
+      "contract-grade-bench-banquette",
+      "all-furniture",
+      "registry-by-cat-furn",
+      "all-dining-furniture",
+      "sustainability-shop",
+      "sale-furniture",
+      "contract-grade-furniture",
+      "secret-all-products",
+      "all-in-stock-furniture",
+      "dining-benches",
+      "dining-contract-grade-furniture",
+      "furniture-whats-new",
+      "seating-contract-grade-furniture"
+     ],
+     "skuid": 7635365,
+     "variation_id": "aldon-dining-bench-SPAF-finish-russet-oak-wood-finish-7635365"
+    },
+    "value": "Aldon Dining Bench (73\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "aldon-dining-bench-SPAF-finish-remainder",
+     "url": "https://www.potterybarn.com/products/aldon-dining-bench/?subGroupId=aldon-dining-bench-SPAF-finish-remainder",
+     "title": "Aldon Dining Bench (73\")",
+     "flags": [
+      "inHome"
+     ],
+     "pipType": "simple-buy",
+     "parentPid": "aldon-dining-bench",
+     "leaderSku": 541705,
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202626/0008/aldon-dining-bench-73-c.jpg",
+     "lowestPrice": 399.97,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0040/img82c.jpg",
+     "salePriceMax": 999,
+     "highestPrice": 999,
+     "salePriceMin": 399.97,
+     "swatchPrices": "541705;399.97;399.97;999.00;999.00;Clearance~7635365;999.00;999.00;999.00;999.00;Regular",
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202626/0013/aldon-dining-bench-73-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0040/img82c.jpg",
+     "regularPriceMax": 999,
+     "regularPriceMin": 999,
+     "swatchOverrides": "541705;aldon-dining-bench-SPAF-finish-remainder;Aldon Dining Bench (73\");https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0040/img82c.jpg;https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202623/0040/img82c.jpg~7635365;aldon-dining-bench-SPAF-finish-russet-oak-wood-finish;Aldon Dining Bench (73\");https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202634/0859/img1c.jpg;https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202634/0859/img1c.jpg",
+     "productPriceType": "Clearance",
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202626/0008/aldon-dining-bench-73-c.jpg",
+     "maxDiscountPercent": 60,
+     "isDynamicAutoSlice": false,
+     "eligibleForQuickBuy": true,
+     "pipThumbnailMessages": "[{\"message\":\"New Finish\",\"displayType\":\"thumbnail\",\"startTime\":null,\"expirationTime\":null},{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "all-new",
+      "contract-grade-furniture",
+      "secret-all-products",
+      "shop-all-clearance",
+      "all-in-stock-furniture",
+      "dining-contract-grade-furniture",
+      "sale-furniture",
+      "seating-contract-grade-furniture",
+      "registry-by-cat-furn",
+      "all-dining-furniture",
+      "all-in-stock",
+      "dining-benches",
+      "contract-grade-bench-banquette",
+      "sustainability-shop",
+      "aldon-furniture-collection",
+      "all-furniture",
+      "exclusive-savings",
+      "furniture-whats-new"
+     ],
+     "skuid": 541705,
+     "variation_id": "aldon-dining-bench-SPAF-finish-remainder-541705"
+    },
+    "value": "Aldon Dining Bench (73\")",
+    "is_slotted": false
+   },
+   {
+    "matched_terms": [],
+    "labels": {},
+    "data": {
+     "id": "woodbury-fully-slipcovered-banquette",
+     "url": "https://www.potterybarn.com/products/woodbury-fully-slipcovered-banquette/",
+     "flags": [
+      "inHome",
+      "newcore"
+     ],
+     "title": "Woodbury Slipcovered Banquette",
+     "pipType": "guided",
+     "image_url": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202624/1217/woodbury-fully-upholstered-banquette-7-c.jpg",
+     "leaderSku": 14667067,
+     "lowestPrice": 599,
+     "salePriceMax": 2007,
+     "highestPrice": 2007,
+     "swatchPrices": "14667067;649.00;1947.00;649.00;1947.00;Regular~14667075;649.00;1947.00;649.00;1947.00;Regular~17690082;659.00;1977.00;659.00;1977.00;Regular~14666168;649.00;1947.00;649.00;1947.00;Regular~14666432;659.00;1977.00;659.00;1977.00;Regular~14666424;659.00;1977.00;659.00;1977.00;Regular~14666267;649.00;1947.00;649.00;1947.00;Regular~14666275;649.00;1947.00;649.00;1947.00;Regular~14666408;659.00;1977.00;659.00;1977.00;Regular~14666416;659.00;1977.00;659.00;1977.00;Regular",
+     "salePriceMin": 599,
+     "imageOverride": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202624/1217/woodbury-fully-upholstered-banquette-7-c.jpg",
+     "leaderSkuImage": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202633/0295/img252c.jpg",
+     "regularPriceMin": 599,
+     "regularPriceMax": 2007,
+     "productPriceType": "Regular",
+     "moreSwatchesCount": 42,
+     "thumb_image_parent": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202624/1217/woodbury-fully-upholstered-banquette-7-c.jpg",
+     "isDynamicAutoSlice": false,
+     "eligibleForQuickBuy": false,
+     "pipThumbnailMessages": "[{\"message\":\"Contract Grade\",\"displayType\":\"thumbnailAndPip\",\"startTime\":\"2018-11-07T08:40:48-0800\",\"expirationTime\":\"2030-10-12T00:00:00-0700\"}]",
+     "group_ids": [
+      "all-new",
+      "furniture-whats-new",
+      "all-dining-furniture",
+      "seating-contract-grade-furniture",
+      "all-furniture",
+      "all-in-stock-furniture",
+      "all-in-stock",
+      "summerville-fall-26-dining",
+      "secret-all-products",
+      "casegoods-contract-grade",
+      "contract-grade-bench-banquette",
+      "dining-benches",
+      "all-small-spaces",
+      "dining-contract-grade-furniture",
+      "registry-by-cat-furn",
+      "slipcovered-furniture"
+     ],
+     "skuid": 14965529,
+     "thumb_image": "https://assets.pbimgs.com/pbimgs/rk/images/dp/wcm/202633/0295/img266c.jpg",
+     "variation_id": "woodbury-fully-slipcovered-banquette-14965529"
+    },
+    "value": "Woodbury Slipcovered Banquette",
+    "is_slotted": false
+   }
+  ],
+  "sort_options": [
+   {
+    "sort_by": "relevance",
+    "display_name": "Most Relevant",
+    "sort_order": "descending",
+    "hidden": false,
+    "status": "selected"
+   },
+   {
+    "sort_by": "lowestPrice",
+    "display_name": "Price (low to high)",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "lowestPrice",
+    "display_name": "Price (high to low)",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "highestPrice",
+    "display_name": "Price (low to high)",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "highestPrice",
+    "display_name": "Price (high to low)",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "name",
+    "display_name": "A - Z",
+    "sort_order": "ascending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "name",
+    "display_name": "Z - A",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   },
+   {
+    "sort_by": "newcore",
+    "display_name": "New",
+    "sort_order": "descending",
+    "status": "",
+    "hidden": false
+   }
+  ],
+  "refined_content": [],
+  "total_num_results": 72,
+  "features": [
+   {
+    "feature_name": "a_a_test",
+    "display_name": "a_a_test",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "auto_generated_refined_query_rules",
+    "display_name": "Affinity Engine",
+    "enabled": true,
+    "variant": {
+     "name": "default_rules",
+     "display_name": "Default weights"
+    }
+   },
+   {
+    "feature_name": "custom_autosuggest_ui",
+    "display_name": "custom_autosuggest_ui",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_global_rules_browse",
+    "display_name": "Disables global refined filter rules with include_in_test=1 column",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_global_rules_search",
+    "display_name": "Disables global refined query rules with include_in_test=1 column",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "disable_test_only_tag_rules",
+    "display_name": "disable test only tag rules",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "enable_campaigns_context_selector_expression",
+    "display_name": "enable campaigns context selector expression",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "enable_holdout_groups",
+    "display_name": "enable holdout groups",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "filter_items",
+    "display_name": "Filter-item boosts",
+    "enabled": true,
+    "variant": {
+     "name": "filter_items_w_atcs_and_purchases",
+     "display_name": "filter_items_w_atcs_and_purchases"
+    }
+   },
+   {
+    "feature_name": "manual_searchandizing",
+    "display_name": "Searchandizing",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "personalization",
+    "display_name": "Personalization",
+    "enabled": true,
+    "variant": {
+     "name": "default_personalization",
+     "display_name": "Default Personalization"
+    }
+   },
+   {
+    "feature_name": "query_items",
+    "display_name": "Learn To Rank",
+    "enabled": true,
+    "variant": {
+     "name": "query_items_ctr_enriched_prefix_and_ctr",
+     "display_name": "query_items_ctr_enriched_prefix_and_ctr"
+    }
+   },
+   {
+    "feature_name": "recommendations_merge_allowlist_rules",
+    "display_name": "recommendations_merge_allowlist_rules",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "refined_tag_rules",
+    "display_name": "refined_tag_rules",
+    "enabled": true,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_autocomplete",
+    "display_name": "reranker_transformations_autocomplete",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_browse",
+    "display_name": "reranker_transformations_browse",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "reranker_transformations_search",
+    "display_name": "reranker_transformations_search",
+    "enabled": true,
+    "variant": {
+     "name": "rpv_min_price_search",
+     "display_name": "rpv_min_price_search"
+    }
+   },
+   {
+    "feature_name": "use_ces_blending",
+    "display_name": "use_ces_blending",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_enriched_attributes_as_fuzzy_searchable",
+    "display_name": "use_enriched_attributes_as_fuzzy_searchable",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_llm_label_sort",
+    "display_name": "use_llm_label_sort",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_reranker_service_for_all",
+    "display_name": "[DEPRECATED] Use reranker service to rerank search and browse results",
+    "enabled": false,
+    "variant": null
+   },
+   {
+    "feature_name": "use_reranker_service_for_browse",
+    "display_name": "Use reranker service to rerank browse / collections results",
+    "enabled": true,
+    "variant": {
+     "name": "browse_reranker_v0_top400_250ms",
+     "display_name": "browse_reranker_v0_top400_250ms"
+    }
+   },
+   {
+    "feature_name": "use_reranker_service_for_search",
+    "display_name": "Use reranker service to rerank search results",
+    "enabled": true,
+    "variant": {
+     "name": "search_reranker_v0_top400",
+     "display_name": "search_reranker_v0_top400"
+    }
+   },
+   {
+    "feature_name": "variation_selection",
+    "display_name": "variation_selection",
+    "enabled": false,
+    "variant": null
+   }
+  ],
+  "related_searches": [],
+  "related_browse_pages": []
+ },
+ "result_id": "00000000-0000-0000-0000-000000000000",
+ "request": {
+  "sort_by": "relevance",
+  "sort_order": "descending",
+  "page": 1,
+  "num_results_per_page": 24,
+  "blacklist_rules": true,
+  "term": "",
+  "fmt_options": {
+   "groups_start": "current",
+   "groups_max_depth": 1,
+   "show_hidden_facets": false,
+   "show_hidden_fields": false,
+   "show_protected_facets": false
+  },
+  "section": "Products",
+  "features": {
+   "query_items": true,
+   "a_a_test": false,
+   "auto_generated_refined_query_rules": true,
+   "manual_searchandizing": true,
+   "personalization": true,
+   "filter_items": true,
+   "use_reranker_service_for_search": true,
+   "use_reranker_service_for_browse": true,
+   "use_reranker_service_for_all": false,
+   "custom_autosuggest_ui": false,
+   "disable_test_only_global_rules_search": false,
+   "disable_test_only_global_rules_browse": false,
+   "use_enriched_attributes_as_fuzzy_searchable": false,
+   "reranker_transformations_autocomplete": false,
+   "refined_tag_rules": true,
+   "reranker_transformations_search": true,
+   "use_ces_blending": false,
+   "reranker_transformations_browse": false,
+   "disable_test_only_tag_rules": false,
+   "enable_holdout_groups": false,
+   "use_llm_label_sort": false,
+   "enable_campaigns_context_selector_expression": true,
+   "recommendations_merge_allowlist_rules": false,
+   "variation_selection": false
+  },
+  "feature_variants": {
+   "query_items": "query_items_ctr_enriched_prefix_and_ctr",
+   "a_a_test": null,
+   "auto_generated_refined_query_rules": "default_rules",
+   "manual_searchandizing": null,
+   "personalization": "default_personalization",
+   "filter_items": "filter_items_w_atcs_and_purchases",
+   "use_reranker_service_for_search": "search_reranker_v0_top400",
+   "use_reranker_service_for_browse": "browse_reranker_v0_top400_250ms",
+   "use_reranker_service_for_all": null,
+   "custom_autosuggest_ui": null,
+   "disable_test_only_global_rules_search": null,
+   "disable_test_only_global_rules_browse": null,
+   "use_enriched_attributes_as_fuzzy_searchable": null,
+   "reranker_transformations_autocomplete": null,
+   "refined_tag_rules": null,
+   "reranker_transformations_search": "rpv_min_price_search",
+   "use_ces_blending": null,
+   "reranker_transformations_browse": null,
+   "disable_test_only_tag_rules": null,
+   "enable_holdout_groups": null,
+   "use_llm_label_sort": null,
+   "enable_campaigns_context_selector_expression": null,
+   "recommendations_merge_allowlist_rules": null,
+   "variation_selection": null
+  },
+  "searchandized_items": {},
+  "browse_filter_name": "group_id",
+  "browse_filter_value": "dining-benches"
+ }
+}

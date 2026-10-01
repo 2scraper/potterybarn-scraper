@@ -1,0 +1,26 @@
+name: The site changed
+description: potterybarn.com (or its listing API) changed shape and a field or a whole run broke.
+labels: ["site-changed"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the normal way a scraper stops working. What helps most:
+
+        - which source broke — the listing API (`ac.cnstrc.com`) or a product
+          page's `window.__INITIAL_STATE__`;
+        - a `--dump-html` capture of ONE product page, with anything that
+          looks like a session or a token removed;
+        - the date you first saw it.
+  - type: input
+    id: url
+    attributes:
+      label: A URL that shows it
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What changed
+    validations:
+      required: true

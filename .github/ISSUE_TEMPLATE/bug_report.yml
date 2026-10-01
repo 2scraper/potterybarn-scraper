@@ -1,0 +1,62 @@
+name: Bug report
+description: The scraper ran but the result was wrong, empty, or it crashed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste an API key, a proxy password or a full `ws://user:pass@...`
+        endpoint into a public issue.** The scrapers mask credentials in their
+        own logs; raw HTML dumps are not masked. Replace them with `***`.
+
+        Things that answer most reports faster than we can:
+
+        - **Exit 3 on a product page?** potterybarn.com refuses non-US
+          addresses and non-curl clients. Check that `POTTERYBARN_PROXY` is a
+          US exit and that `curl` is on PATH (`--http-client curl`). A local
+          browser is refused on this site — that is measured, not a bug.
+        - **Exit 5?** That is our own plumbing (a timeout, a proxy 407, a
+          locked Scraping Browser profile), not the site. See
+          TROUBLESHOOTING.md.
+        - **A category returns 0 products?** The URL probably landed on a
+          department HUB (`/shop/furniture/`). Use `catalog_walk.py
+          categories --leaf-only --grep <word>` to find the leaf.
+        - **A sofa's product run has thousands of rows?** Correct: one row per
+          SKU, and a configurable sofa has thousands (4,843 on one).
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Which entry point
+      options:
+        - api_scraper.py (listings)
+        - http_scraper.py (product pages)
+        - playwright_scraper.py
+        - puppeteer_scraper.py
+        - selenium_scraper.py
+        - catalog_walk.py
+        - other / not sure
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: The command you ran (credentials removed)
+    validations:
+      required: true
+  - type: input
+    id: exit
+    attributes:
+      label: Exit code
+  - type: textarea
+    id: meta
+    attributes:
+      label: The `.latest_attempt.meta.json` sidecar
+      description: It records the mode, the page states, the stop reason and the exit used (masked).
+      render: json
+  - type: textarea
+    id: what
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true
