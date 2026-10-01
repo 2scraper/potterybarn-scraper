@@ -22,7 +22,7 @@ jobs:
         python-version: ["3.9", "3.12"]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install core dependencies (no engine, on purpose)
@@ -95,7 +95,7 @@ jobs:
         engine: [playwright, puppeteer, selenium]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install core + the ${{ matrix.engine }} engine, in its own venv
