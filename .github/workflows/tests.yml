@@ -21,7 +21,7 @@ jobs:
         # a walrus operator or an `X | None` annotation ships.
         python-version: ["3.9", "3.12"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -94,7 +94,7 @@ jobs:
       matrix:
         engine: [playwright, puppeteer, selenium]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -115,7 +115,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build the image
         run: docker build -t potterybarn-scraper:ci .
       - name: The default entrypoint runs
