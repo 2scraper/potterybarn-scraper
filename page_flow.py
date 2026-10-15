@@ -2,7 +2,7 @@
 
 Every transport reaches the retry/rotate/solve/blocked decision through this
 one table, so an engine cannot quietly disagree with its twins about whether
-a page is worth retrying or paying for (a rule of this scraper family).
+a page is worth retrying or paying for.
 
 The states come from product_parser.detect_page_state (and, for the listing
 API, api_scraper's own classifier):
@@ -19,13 +19,18 @@ API, api_scraper's own classifier):
     geo_redirect   sent to potterybarn.co.uk — a refusal of this exit
                    specifically; a fresh US session is the answer
     rate_limited   HTTP 429 from the listing API — back off, then retry
+    rejected       any other 4xx from the listing API: the REQUEST was
+                   refused. Not retried (the same request gets the same
+                   answer), not blocked, and the page counts as failed
+    unexpected_response  a 200 from the listing API that is not the browse
+                   shape. A failed page, never an empty listing
     captcha        a rendered challenge widget — the paid rung. Never met on
                    this site: 0 Captcha events over every browser session
                    measured 2026-09-24
     transport_error  our own plumbing (timeout, reset, TLS error at the
                    exit). Retry the same exit; never exit 3 for it
 
-No JavaScript crosses this boundary (a rule of this scraper family).
+No JavaScript crosses this boundary: each driver spells it differently.
 """
 
 from typing import Dict
@@ -38,6 +43,8 @@ STATE_POLICY: Dict[str, Dict[str, bool]] = {
     "empty": {"retry": False, "solve": False, "blocked": False, "rotate": False},
     "blocked": {"retry": True, "solve": False, "blocked": True, "rotate": True},
     "geo_redirect": {"retry": True, "solve": False, "blocked": True, "rotate": True},
+    "rejected": {"retry": False, "solve": False, "blocked": False, "rotate": False},
+    "unexpected_response": {"retry": False, "solve": False, "blocked": False, "rotate": False},
     "rate_limited": {"retry": True, "solve": False, "blocked": True, "rotate": False},
     "captcha": {"retry": True, "solve": True, "blocked": True, "rotate": False},
     "transport_error": {"retry": True, "solve": False, "blocked": False, "rotate": False},

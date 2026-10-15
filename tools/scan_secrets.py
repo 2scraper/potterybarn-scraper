@@ -17,7 +17,7 @@ So the only guard that actually protects anything is one that runs on YOUR
 machine, before the commit object exists.
 
     python3 tools/scan_secrets.py --staged     # what is about to be committed
-    python3 tools/scan_secrets.py --worktree   # every tracked file
+    python3 tools/scan_secrets.py --worktree   # tracked + untracked files
     python3 tools/scan_secrets.py --range A..B # commits about to be pushed
     python3 tools/scan_secrets.py --history    # every blob that ever existed
 
@@ -73,12 +73,17 @@ def real_credential(match) -> bool:
     return len(user) >= 8 and len(password) >= 8
 
 
-def scan_text(path: str, text: str):
-    """Yield '<what>' strings for everything credential-shaped in `text`."""
+def scan_text(path: str, text: str, by_name: bool = True):
+    """Yield '<what>' strings for everything credential-shaped in `text`.
+
+    `by_name=False` judges the CONTENT only: used for a gitignored `.env`
+    backup in the working tree, where the name alone is expected (that is
+    what the ignore rule is for) but a key inside it is still worth saying
+    out loud before anyone runs `git add -f`."""
     out = []
-    if ENV_FILE.search(path):
+    if by_name and ENV_FILE.search(path):
         out.append("a .env file (only .env.example may be committed)")
-    if RISKY_NAME.search(path):
+    if by_name and RISKY_NAME.search(path):
         out.append("a backup/key-shaped filename")
     if path in SKIP:
         # These files carry the patterns they hunt for.
@@ -151,17 +156,63 @@ def scan_staged() -> int:
     return _report(findings)
 
 
+def _in_virtualenv(name: str, cache: dict) -> bool:
+    """Is `name` inside a virtualenv? A directory holding `pyvenv.cfg` is one
+    whatever it is called — a venv named anything but `venv` is still full of
+    vendored code with hex in it. Judged on the path RELATIVE to the repo, so
+    a clone that itself lives under a directory called `venv` or `tmp` is
+    scanned normally."""
+    import os
+    parts = name.split("/")[:-1]
+    for depth in range(1, len(parts) + 1):
+        directory = "/".join(parts[:depth])
+        if directory not in cache:
+            cache[directory] = os.path.isfile(os.path.join(directory, "pyvenv.cfg"))
+        if cache[directory]:
+            return True
+    return False
+
+
+def worktree_files():
+    """(name, by_name) for every file the worktree scan reads.
+
+    Tracked files, and UNTRACKED files that are not ignored — the first
+    version read `git ls-files` only, so a stray `.env.bak` or a pasted key in
+    a new file was "clean" until the moment it was staged. Plus ignored
+    `.env.*` backups, judged by content only (see scan_text). Virtualenvs are
+    skipped by their marker file, never by name.
+    """
+    tracked = [n for n in _git("ls-files", "-z").split("\0") if n]
+    untracked = [n for n in _git("ls-files", "-z", "--others", "--exclude-standard").split("\0") if n]
+    ignored = [n for n in _git("ls-files", "-z", "--others", "--ignored",
+                               "--exclude-standard").split("\0") if n]
+    cache: dict = {}
+    out = [(n, True) for n in tracked]
+    out += [(n, True) for n in untracked if not _in_virtualenv(n, cache)]
+    out += [(n, False) for n in ignored
+            if ENV_FILE.search(n) and not n.endswith((".env", "/.env"))
+            and n != ".env" and not _in_virtualenv(n, cache)]
+    return out
+
+
 def scan_worktree() -> int:
-    names = [n for n in _git("ls-files", "-z").split("\0") if n]
     findings = []
-    for name in names:
+    scanned = 0
+    for name, by_name in worktree_files():
         try:
             with open(name, encoding="utf-8", errors="replace") as handle:
                 text = handle.read()
         except OSError:
             continue
-        for what in scan_text(name, text):
+        scanned += 1
+        for what in scan_text(name, text, by_name=by_name):
             findings.append((name, what))
+    print("scanned %d file(s) in the working tree" % scanned)
+    if not scanned:
+        # "clean" and "scanned nothing" must never print the same thing.
+        print("secret scan read no files at all — refusing to call that clean",
+              file=sys.stderr)
+        return 1
     return _report(findings)
 
 

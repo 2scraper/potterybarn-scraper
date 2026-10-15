@@ -112,7 +112,7 @@ PAGE_SIZE = 24
 # The shop's OWN branded refusal. Measured 2026-09-23/24, every one HTTP 403,
 # body sizes 652, 1,326, 1,425, 1,600 and 3,307 bytes depending on the client
 # that was refused — no vendor marker in any of them. Status is the primary
-# signal (a rule of this scraper family); these are the secondary one, for engines with
+# signal; these are the secondary one, for engines with
 # no response object.
 BLOCK_MARKERS = (
     "pottery barn: 403 - restricted access",
@@ -134,7 +134,7 @@ CAPTCHA_MARKERS = (
 
 # The auto-solve extension of the Scraping Browser API injects its own
 # hunters, one of them declaring `cf-turnstile` — which IS in the marker set
-# above, so this strip is load-bearing here (a rule of this scraper family).
+# above, so this strip is load-bearing here.
 _EXTENSION_SCRIPT_RE = re.compile(
     r"<script[^>]+src=[\"'](?:chrome|moz)-extension://[^\"']*[\"'][^>]*>\s*</script>",
     re.I)
@@ -396,6 +396,13 @@ def parse_browse_response(payload: Dict[str, Any], *, currency: Optional[str],
             row.row_index = index
             rows.append(row)
     return rows
+
+
+def page_inside_total(page: int, total: Optional[int], per_page: int = PAGE_SIZE) -> bool:
+    """Does a browse response's own `total_num_results` say page `page`
+    should hold rows? Used to tell a parsing failure from the end of a
+    listing: a page inside the stated total that parses to nothing is ours."""
+    return bool(total) and (page - 1) * per_page < total
 
 
 def browse_total(payload: Dict[str, Any]) -> Optional[int]:
