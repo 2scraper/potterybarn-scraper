@@ -114,9 +114,15 @@ def classify_api(status: Optional[int], payload: Any, error: Optional[str]) -> s
         return "blocked"
     if status >= 500:
         return "transport_error"
-    if status != 200 or not isinstance(payload, dict) \
-            or not isinstance(payload.get("response"), dict):
-        return "empty"
+    if status != 200:
+        # Any other 4xx — a 400 for a malformed request, a 404 — is the API
+        # refusing the REQUEST. It is neither a block (no exit to change) nor
+        # an empty listing: the run reports the page as failed.
+        return "rejected"
+    if not isinstance(payload, dict) or not isinstance(payload.get("response"), dict):
+        # A 200 that is not the browse shape. The first version called this
+        # `empty`, and a later page answering it ended the run as `complete`.
+        return "unexpected_response"
     return "api"
 
 
@@ -285,6 +291,16 @@ def sweep(args, session, group_id, key, currency, label, pages, proxies,
         if page == 1:
             facts["group"] = P.browse_group(payload)
         page_rows = P.parse_browse_response(payload, currency=currency, category=label)
+        if not page_rows and P.page_inside_total(page, total):
+            # The response states `total` results and this page lies inside
+            # it, yet nothing parsed: the shape moved, not the catalogue.
+            # Reporting it as the end of the listing would be exit 4 (or a
+            # `complete` run on a later page) for our own parsing failure.
+            facts["failed_pages"].append(page)
+            facts["parser_found_nothing"] = True
+            print("page %d: the response states %s results but none parsed — "
+                  "the API's shape may have changed" % (page, total), file=sys.stderr)
+            break
         for row in page_rows:
             row.page = page
         fresh = output_writer.dedupe_by_sku(page_rows, seen)
@@ -413,6 +429,14 @@ def _stop_reason(args, facts: Dict[str, Any]) -> str:
         # `complete` (audit, 2026-10-01), which a diff would then read as 423
         # delistings.
         return "max_products_reached"
+    if facts.get("parser_found_nothing"):
+        return "parser_found_nothing"
+    if facts["failed_pages"]:
+        # A page that failed with an answer that is neither a block nor our
+        # transport (a 400, a 200 that is not the browse shape). Without this
+        # the run fell through to `pagination_exhausted`: complete, exit 0,
+        # with every later page missing.
+        return "page_failed"
     if args.all_pages and facts.get("arithmetic_closes") is False \
             and facts.get("collected", 0) < (facts.get("total_num_results") or 0):
         # Known to have missed products: partial, never complete.
@@ -490,7 +514,22 @@ def parse_args(argv=None):
     p.add_argument("--proxy-sessions", type=_positive_int, default=None)
     p.add_argument("--proxy-block-retries", type=_non_negative_int, default=3)
     args = p.parse_args(argv)
-    env_config.apply(args)
+    # POTTERYBARN_URL is documented as the page a BROWSER engine fetches — in
+    # practice a product page. Applied blindly here it hijacked a typed
+    # `--group-id sofa` and refused the run as "not a category page". So the
+    # environment's URL is used only when nothing was typed to say what to
+    # fetch, and only when it is a category page at all.
+    typed_url = args.url
+    keys = dict(env_config.ENV_KEYS)
+    if args.group_id or typed_url:
+        keys = {k: v for k, v in keys.items() if v != "url"}
+    env_config.apply(args, keys=keys)
+    if args.url and not typed_url and not P.is_category_url(args.url):
+        print("[!] ignoring POTTERYBARN_URL from the environment: it is not a "
+              "category page (/shop/...), and this script reads categories",
+              file=sys.stderr)
+        args.url = None
+    args.url_source = "flag" if typed_url else ("env" if args.url else None)
     return args
 
 

@@ -31,11 +31,24 @@ potterybarn_products.*
 potterybarn_skus.*
 canary_run.*
 live/
+# Run output by KIND of directory, not by one chosen name, and a dump named
+# after its page (`--dump-html x.json` on page 3 writes x_p3.json; other
+# tools in this space write x.page3).
+out/
+output/
+runs/
+results/
+tmp/
+scratch/
+dumps/
+*.page[0-9]*
 
 # --- debug artefacts ------------------------------------------------------------
 *_debug.html
 *_debug.png
 *_p[0-9]*.html
+# A raw page saved at the repo root. Fixtures live under fixtures/.
+/*.html
 
 # --- caches, builds, environments ----------------------------------------------
 __pycache__/

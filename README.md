@@ -42,7 +42,7 @@ key, and `api_scraper.py` makes that same call. From Moscow, with no proxy
 and no special headers, the whole sofa category came back as **434 rows over
 19 pages**, matching the API's own `total_num_results: 434`.
 
-**Product pages refuse on three axes at once** (a rule of this scraper family):
+**Product pages refuse on three axes at once**:
 
 1. **Address.** A non-US address gets the branded 403 ("Pottery Barn: 403 -
    Restricted Access"), and `/robots.txt` is redirected to
@@ -489,9 +489,9 @@ wrong page is worse than none, so none ships.
 | `1` | Crash |
 | `2` | Bad usage, including a URL on another host or one robots.txt disallows |
 | `3` | Blocked: the site refused (a 403, a redirect to the UK store, a 429 from the API) |
-| `4` | Zero products, including a hub category, which is a correct answer |
-| `5` | Our plumbing, not the site: a timeout, a dropped CDP socket, a locked profile, a proxy 407 |
-| `6` | Partial: some pages or products fetched, then stopped or failed |
+| `4` | Zero products, and the site said so: a listing that states 0 results, or a hub category, which is a correct answer |
+| `5` | Zero products because the content was never obtained: our plumbing (a timeout, a dropped CDP socket, a locked profile, a proxy 407), a page that failed with any other answer, or a served page whose stated rows did not parse (`stop_reason: parser_found_nothing`) |
+| `6` | Partial: some pages or products fetched, then stopped or failed. A failed later page is never `complete` |
 
 **`3` and `5` mean different things.** A 407 on the proxy tunnel means
 potterybarn.com was never reached. It is never retried or rotated, because
@@ -499,6 +499,13 @@ every exit on a dead credential fails the same way. On this vendor a 407 has
 been measured to be *transient* (homedepot-scraper: an hour of 407s, then 200
 the next day with nothing changed), so "retry later" comes before "replace
 the credential".
+
+**The CSV escapes formula-shaped cells.** A text cell beginning `=`, `+`,
+`-`, `@`, a tab or a line break gets a leading apostrophe in the CSV only, so
+a spreadsheet shows it instead of executing it; numbers are untouched and the
+JSON keeps the site's text. The sidecar's `csv_cells_escaped` says how many.
+Output files take the permissions your umask gives a new file, and a file
+that already exists keeps its own.
 
 **A run that finds nothing writes nothing.** Yesterday's good output is not
 replaced with `[]`; `--allow-empty` is the opt-out. `<out>.meta.json`

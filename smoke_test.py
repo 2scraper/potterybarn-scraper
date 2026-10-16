@@ -22,6 +22,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -540,7 +541,19 @@ def test_api_classifier_and_rate_limit():
     eq("429 -> rate_limited", api_scraper.classify_api(429, None, None), "rate_limited")
     eq("503 -> our problem, not a block", api_scraper.classify_api(503, None, None), "transport_error")
     eq("no status -> transport_error", api_scraper.classify_api(None, None, "boom"), "transport_error")
-    eq("200 without a response -> empty", api_scraper.classify_api(200, {"x": 1}, None), "empty")
+    # This used to pin "empty", and `empty` on a later page let the run end as
+    # complete with exit 0. A 200 that is not the browse shape is a failed
+    # page; any other 4xx is the API refusing the request.
+    eq("200 without a response -> unexpected_response",
+       api_scraper.classify_api(200, {"x": 1}, None), "unexpected_response")
+    eq("200 that is not JSON -> unexpected_response",
+       api_scraper.classify_api(200, None, None), "unexpected_response")
+    eq("400 -> rejected, not empty and not blocked", api_scraper.classify_api(400, None, None), "rejected")
+    import page_flow
+    for state in ("rejected", "unexpected_response"):
+        check("%s is in the state policy: not retried, not blocked" % state,
+              state in page_flow.STATE_POLICY and not page_flow.should_retry(state)
+              and not page_flow.counts_as_blocked(state))
     eq("200 with a response -> api", api_scraper.classify_api(200, {"response": {}}, None), "api")
     eq("plenty left -> no pause", api_scraper.rate_limit_pause({"x-ratelimit-remaining": "150"}), 0.0)
     eq("low -> a slower pace", api_scraper.rate_limit_pause(
@@ -977,7 +990,10 @@ def test_bridge_category_reads_the_api_through_the_browser():
     payload = json.loads(fixture("browse_sofa_p1.json"))
     doc = "<html><head></head><body><pre>%s</pre></body></html>" % (
         json.dumps(payload).replace("&", "&amp;").replace("<", "&lt;"))
-    empty = "<html><body><pre>%s</pre></body></html>" % json.dumps(_browse_payload([], 434))
+    # The empty page states a total the six rows already cover. It used to
+    # state 434, which a real response could not: page 2 lies inside 434
+    # results, so an empty page 2 under that total is a parsing failure.
+    empty = "<html><body><pre>%s</pre></body></html>" % json.dumps(_browse_payload([], 6))
     tmp = tempfile.mkdtemp()
     driver = StubDriver([doc, empty])
     rc, _ = quiet(browser_bridge.run, _bridge_args(
@@ -1013,7 +1029,9 @@ def test_env_keys_and_example():
     import env_config
     eq("ENV_KEYS", set(env_config.ENV_KEYS),
        {"TWOCAPTCHA_KEY", "POTTERYBARN_PROXY", "POTTERYBARN_CDP_ENDPOINT", "POTTERYBARN_URL"})
-    documented = set(re.findall(r"^([A-Z][A-Z0-9_]+)=", open(os.path.join(HERE, ".env.example")).read(), re.M))
+    # A name may be documented commented out (`# POTTERYBARN_URL=`): it is
+    # an optional default, and shipping it live let it hijack typed flags.
+    documented = set(re.findall(r"^(?:# )?([A-Z][A-Z0-9_]+)=", open(os.path.join(HERE, ".env.example")).read(), re.M))
     eq(".env.example documents exactly what is read", documented, set(env_config.ENV_KEYS))
     check(".env.example holds no value", all(v == "" for v in re.findall(
         r"^[A-Z][A-Z0-9_]+=(.*)$", open(os.path.join(HERE, ".env.example")).read(), re.M)))
@@ -1068,7 +1086,7 @@ def test_hooks_are_versioned_and_wired():
 
 
 def test_no_json_version_preflight():
-    """`GET /json/version` takes the profile lock (family CLAUDE.md §17)."""
+    """`GET /json/version` takes the Scraping Browser profile lock itself."""
     offenders = []
     for name in SHIPPED_PY:
         if name == "smoke_test.py":
@@ -1246,7 +1264,10 @@ def test_sample_output_matches_the_schema():
     eq("sample_output.csv header", header, [f.name for f in dataclasses.fields(W.Product)])
 
 
-BANNED = ("cloud browser", "antidetect", "gate.2prx.com", "ANTIDETECT_LOCAL_API")
+# Assembled from pieces, so this file can be scanned for them like any other
+# shipped file instead of being exempt from its own check.
+BANNED = ("cloud" + " browser", "anti" + "detect", "gate." + "2prx.com",
+          "ANTI" + "DETECT_LOCAL_API")
 SIBLING_DRIFT = ("HOMEDEPOT_", "homedepot_products", "__APOLLO_STATE__", "Nao=", "bershka",
                  "inditex", "transfermarkt", "sephora", "Miter Saws", "WOMEN / SALE",
                  # The review prompt carried another repo's domain until the
@@ -1254,7 +1275,13 @@ SIBLING_DRIFT = ("HOMEDEPOT_", "homedepot_products", "__APOLLO_STATE__", "Nao=",
                  # "tokopedia lesson", a page_url() this repo does not have.
                  "player", "transfer list", "tokopedia", "in eur", "page_url(",
                  # An internal operator document; a public file must not cite it.
-                 "claude.md")
+                 "claude" + ".md")
+
+# Citations of internal documents the public cannot open. A public file states
+# its rule in its own words instead.
+PRIVATE_CITATIONS = ("claude" + ".md", "claude_" + "2scraper", "2scraper_" + "repo_rules",
+                     "playbook " + "\u00a7", "template " + "\u00a7", "family " + "notes")
+_SECTION_REF = re.compile("\u00a7" + r"\s*\d")
 
 
 _TEXT_SUFFIXES = (".py", ".md", ".txt", ".yml", ".toml", ".example", ".sh")
@@ -1289,16 +1316,254 @@ def _shipped_text_files():
     return out
 
 
+def private_citations(text):
+    """Every private citation in `text`: a named internal document, or a bare
+    section sign with a number (an RFC's own section reference is fine)."""
+    low = text.lower()
+    found = [p for p in PRIVATE_CITATIONS if p in low]
+    for match in _SECTION_REF.finditer(text):
+        if not re.search(r"RFC\s*\d+\s*$", text[max(0, match.start() - 12):match.start()]):
+            found.append(text[max(0, match.start() - 20):match.end() + 4])
+    return found
+
+
+def test_no_private_citations():
+    files = _shipped_text_files()
+    check("the citation scan covers the suite file itself", "smoke_test.py" in files)
+    check("the citation scan covers the changelog", "CHANGELOG.md" in files)
+    for rel in files:
+        hits = private_citations(open(os.path.join(HERE, rel), encoding="utf-8").read())
+        check("%s cites no private document" % rel, not hits, hits[:3])
+    check("the citation guard fires on a planted citation",
+          private_citations("see the " + "playbook " + "\u00a7" + "17") and
+          private_citations("(" + "\u00a7" + "19 of x)"))
+    check("...and leaves an RFC section alone", not private_citations("RFC 9309 " + "\u00a7" + "2.2.2"))
+
+
 def test_banned_wordings_and_sibling_drift():
     for rel in _shipped_text_files():
-        if rel == "smoke_test.py":
-            continue
         text = open(os.path.join(HERE, rel), encoding="utf-8").read()
         low = text.lower()
         for phrase in BANNED:
             check("%s avoids %r" % (rel, phrase), phrase.lower() not in low)
+        if rel == "smoke_test.py":
+            # It names the sibling words it hunts for.
+            continue
         for phrase in SIBLING_DRIFT:
             check("%s carries no sibling text %r" % (rel, phrase), phrase.lower() not in low)
+
+
+# ---------------------------------------------------------------------------
+# Audit 2026-10-14: run status, exit codes, file modes, CSV, env, scanner
+# ---------------------------------------------------------------------------
+
+def _api_main(pages, argv):
+    import api_scraper
+    tmp = tempfile.mkdtemp()
+    fake = _FakeSession(pages)
+    with mock.patch.object(api_scraper.requests, "Session", lambda: fake), \
+            mock.patch.object(api_scraper.time, "sleep", lambda s: None):
+        rc, _ = quiet(api_scraper.main, ["--group-id", "g", "--delay", "0", "--retry-delay", "0",
+                                         "--out", tmp + "/o", "--format", "json"] + argv)
+    meta = json.load(open(tmp + "/o" + W.ATTEMPT_META_SUFFIX))
+    return rc, meta
+
+
+def test_api_a_later_failed_page_is_not_complete():
+    """Audit 2026-10-14: page 2 answering HTTP 400 ended the run `complete`,
+    exit 0, with pages_failed=[2] in the same sidecar."""
+    page1 = _Resp(200, json.loads(fixture("browse_sofa_p1.json")))
+    for name, page2 in (("HTTP 400", _Resp(400, None)), ("a 200 that is not JSON", _Resp(200, None)),
+                        ("a 200 of another shape", _Resp(200, {"error": "x"}))):
+        rc, meta = _api_main([page1, page2], ["--pages", "3"])
+        eq("api: page 2 is %s -> partial, exit 6, not complete" % name,
+           (rc, meta["status"], meta["stop_reason"], meta["pages_failed"]),
+           (6, "partial", "page_failed", [2]))
+    rc, meta = _api_main([_Resp(400, None)], ["--pages", "3"])
+    eq("api: page 1 is a 400 -> nothing obtained, exit 5", (rc, meta["status"]), (5, "failed"))
+
+
+def test_api_stated_rows_that_parse_to_none_are_a_parser_failure():
+    """Audit 2026-10-14: a response stating 434 results whose `results` key
+    had moved parsed to 0 rows and exited 4, "nothing listed"."""
+    moved = json.loads(fixture("browse_sofa_p1.json"))
+    moved["response"]["items"] = moved["response"].pop("results")
+    rc, meta = _api_main([_Resp(200, moved)], ["--pages", "3"])
+    eq("api: 434 stated, 0 parsed on page 1 -> exit 5, parser_found_nothing",
+       (rc, meta["stop_reason"]), (5, "parser_found_nothing"))
+    page1 = _Resp(200, json.loads(fixture("browse_sofa_p1.json")))
+    rc, meta = _api_main([page1, _Resp(200, moved)], ["--pages", "3"])
+    eq("api: the same on page 2 -> partial, exit 6",
+       (rc, meta["status"], meta["stop_reason"]), (6, "partial", "parser_found_nothing"))
+    rc, meta = _api_main([_Resp(200, _browse_payload([], 0))], ["--pages", "3"])
+    eq("api: a listing that states 0 results is a genuine empty -> exit 4", rc, 4)
+
+
+def test_bridge_stated_rows_that_parse_to_none():
+    import browser_bridge
+    payload = json.loads(fixture("browse_sofa_p1.json"))
+    payload["response"]["items"] = payload["response"].pop("results")
+    doc = "<html><body><pre>%s</pre></body></html>" % json.dumps(payload).replace("&", "&amp;").replace("<", "&lt;")
+    tmp = tempfile.mkdtemp()
+    rc, _ = quiet(browser_bridge.run, _bridge_args(
+        ["--mode", "category", "--group-id", "sofa", "--pages", "2", "--delay", "0",
+         "--out", tmp + "/a"]), StubDriver([doc]))
+    meta = json.load(open(tmp + "/a" + W.ATTEMPT_META_SUFFIX))
+    eq("bridge: 434 stated, 0 parsed -> exit 5, parser_found_nothing",
+       (rc, meta["stop_reason"]), (5, "parser_found_nothing"))
+
+
+def test_zero_rows_exit_4_only_for_a_genuine_empty():
+    for reason in ("incomplete", "page_failed", "parser_found_nothing", "a_reason_added_later"):
+        rc, _ = _run([], stop_reason=reason, pages_completed=0)
+        eq("0 rows, stop %s -> 5 (content never obtained), not 4" % reason, rc, 5)
+    for reason in W.COMPLETE_STOP_REASONS:
+        rc, _ = _run([], stop_reason=reason, pages_completed=1)
+        eq("0 rows, stop %s -> 4" % reason, rc, 4)
+
+
+def test_http_served_page_without_state_is_not_an_empty_catalogue():
+    import http_scraper
+    page = http_scraper._Response(200, "<html><head><title>Pottery Barn</title></head><body>"
+                                  + "x" * 9000 + "</body></html>",
+                                  "https://www.potterybarn.com/products/delaney/")
+
+    class S:
+        def get(self, url, **kw):
+            return page
+    tmp = tempfile.mkdtemp()
+    with mock.patch.object(http_scraper, "build_session", lambda *a, **k: S()):
+        rc, _ = quiet(http_scraper.main, ["--url", "https://www.potterybarn.com/products/delaney/",
+                                          "--delay", "0", "--retries", "0",
+                                          "--out", tmp + "/o", "--format", "json"])
+    eq("http: a served page with no product state, 0 rows -> exit 5, not 4", rc, 5)
+
+
+def _mode(path):
+    import stat
+    return stat.S_IMODE(os.stat(path).st_mode)
+
+
+def test_outputs_honour_the_umask_and_keep_an_existing_mode():
+    """Audit 2026-10-14: mkstemp's 0600 survived os.replace, so every output
+    and sidecar was owner-only."""
+    row = W.Product(sku="a", product_id="a")
+    for umask, want in ((0o022, 0o644), (0o002, 0o664), (0o077, 0o600)):
+        old = os.umask(umask)
+        try:
+            rc, out = _run([row])
+        finally:
+            os.umask(old)
+        eq("umask %03o: json, csv and sidecar are %03o" % (umask, want),
+           [_mode(out + ext) for ext in (".json", ".csv", ".meta.json")], [want] * 3)
+    tmp = tempfile.mkdtemp()
+    path = os.path.join(tmp, "o.json")
+    open(path, "w").close()
+    os.chmod(path, 0o664)
+    old = os.umask(0o022)
+    try:
+        W.write_json([row], path)
+    finally:
+        os.umask(old)
+    eq("an existing 0664 file keeps its mode under umask 022", _mode(path), 0o664)
+    check("...and no temp file is left beside it", os.listdir(tmp) == ["o.json"], os.listdir(tmp))
+
+
+def test_csv_cells_that_a_spreadsheet_would_execute_are_escaped():
+    row = W.Product(sku="=1+1", product_id="p", title="=HYPERLINK(\"http://x\",\"y\")",
+                    flags=["@SUM(A1)", "ok"], category="-x", price=-5.0, price_max=3.0)
+    rc, out = _run([row])
+    import csv as csv_mod
+    cells = next(csv_mod.DictReader(open(out + ".csv", newline="")))
+    eq("formula-shaped strings get a leading apostrophe in CSV",
+       (cells["sku"], cells["title"][:3], cells["flags"], cells["category"]),
+       ("'=1+1", "'=H", "'@SUM(A1) | ok", "'-x"))
+    eq("a negative NUMBER stays a number", cells["price"], "-5.0")
+    data = json.load(open(out + ".json"))[0]
+    eq("JSON keeps the site's bytes", (data["sku"], data["flags"]), ("=1+1", ["@SUM(A1)", "ok"]))
+    meta = json.load(open(out + ".meta.json"))
+    eq("the sidecar declares how many cells were escaped", meta["csv_cells_escaped"], 4)
+    for lead in ("+", "\t", "\r", "\n"):
+        eq("a cell starting %r is escaped" % lead, W._csv_cell(lead + "x"), ("'" + lead + "x", True))
+
+
+def test_env_url_does_not_hijack_a_typed_group_id():
+    """Audit 2026-10-14: POTTERYBARN_URL holding a product page (what the
+    browser engines use it for) made `api_scraper.py --group-id sofa` exit 2."""
+    import api_scraper
+    product = "https://www.potterybarn.com/products/delaney-marble-end-table/"
+    category = "https://www.potterybarn.com/shop/furniture/sofa/"
+    with mock.patch.dict(os.environ, {"POTTERYBARN_URL": product}):
+        args, _ = quiet(api_scraper.parse_args, ["--group-id", "sofa"])
+        eq("--group-id with a product URL in the environment: no URL taken", args.url, None)
+        args, text = quiet(api_scraper.parse_args, [])
+        eq("no flags, a product URL in the environment: ignored, and said so",
+           (args.url, "ignoring POTTERYBARN_URL" in text), (None, True))
+    with mock.patch.dict(os.environ, {"POTTERYBARN_URL": category}):
+        args, _ = quiet(api_scraper.parse_args, [])
+        eq("no flags, a category URL in the environment: used", (args.url, args.url_source),
+           (category, "env"))
+        args, _ = quiet(api_scraper.parse_args, ["--group-id", "sofa"])
+        eq("...but never over a typed --group-id", args.url, None)
+    try:
+        quiet(api_scraper.main, ["--url", product])
+        code = 0
+    except SystemExit as exc:
+        code = exc.code
+    eq("a TYPED product URL is still refused with exit 2", code, 2)
+
+
+def test_worktree_scan_reads_untracked_files_and_skips_virtualenvs():
+    sys.path.insert(0, os.path.join(HERE, "tools"))
+    import scan_secrets as S
+    repo = tempfile.mkdtemp()
+    here = os.getcwd()
+    key = "TWOCAPTCHA_KEY=" + "ab" * 16 + "\n"
+    try:
+        os.chdir(repo)
+        if subprocess.run(["git", "init", "-q"], capture_output=True).returncode != 0:
+            check("git is available for the worktree scan check", False)
+            return
+        rc, text = quiet(S.main, ["--worktree"])
+        eq("an empty tree is a FAILED scan, never 'clean'", rc, 1)
+        open(".gitignore", "w").write(".env\n.env.*\n!.env.example\n")
+        open("a.py", "w").write("x = 1\n")
+        subprocess.run(["git", "add", ".gitignore", "a.py"], check=True)
+        rc, text = quiet(S.main, ["--worktree"])
+        eq("a clean tree is clean, and says how many files it read",
+           (rc, "scanned 2 file(s)" in text), (0, True))
+        open("new.py", "w").write(key)
+        rc, _ = quiet(S.main, ["--worktree"])
+        eq("an UNTRACKED file with a key is caught", rc, 1)
+        os.remove("new.py")
+        open(".env.bak", "w").write(key)
+        rc, _ = quiet(S.main, ["--worktree"])
+        eq("an ignored .env backup holding a key is caught", rc, 1)
+        os.remove(".env.bak")
+        open(".env", "w").write(key)
+        rc, _ = quiet(S.main, ["--worktree"])
+        eq("the ignored working .env itself is not a finding", rc, 0)
+        os.makedirs("myenv/lib")
+        open("myenv/pyvenv.cfg", "w").write("home = /usr\n")
+        open("myenv/lib/vendored.py", "w").write("# " + "a" * 32 + "\n")
+        rc, _ = quiet(S.main, ["--worktree"])
+        eq("a virtualenv under any name is skipped by its pyvenv.cfg", rc, 0)
+    finally:
+        os.chdir(here)
+        shutil.rmtree(repo, ignore_errors=True)
+
+
+def test_gitignore_covers_capture_kinds():
+    for path, ignored in (("x.page3", True), ("dump.html", True), ("out/a.json", True),
+                          ("tmp/a.txt", True), ("dumps/a", True),
+                          ("fixtures/new.html", False), (".github/x.yml", False),
+                          ("tests/x.py", False), (".env.example", False)):
+        res = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=HERE,
+                             capture_output=True)
+        if res.returncode == 128:
+            check("git check-ignore available", False, res.stderr)
+            return
+        eq(".gitignore: %s %s" % (path, "ignored" if ignored else "kept"), res.returncode == 0, ignored)
 
 
 def main():

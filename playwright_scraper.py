@@ -21,7 +21,7 @@ import proxy_pool
 
 # Module level on purpose: the offline suite skips this engine when
 # Playwright is absent, and can only tell "absent" from "broken" if the import
-# fails here (a rule of this scraper family).
+# fails here.
 from playwright.sync_api import sync_playwright
 
 CAPTCHA_EVENTS = ("Captcha.solveStarted", "Captcha.solveFinished",
@@ -65,7 +65,7 @@ class PlaywrightDriver:
                 launch["proxy"] = proxy_pool.to_playwright(pool.current)
             self._browser = self._pw.chromium.launch(**launch)
             # No user agent and no fingerprint: a hardcoded UA drifts from the
-            # installed Chromium (a rule of this scraper family).
+            # installed Chromium.
             self._context = self._browser.new_context(locale="en-US")
         self._page = self._context.new_page()
         self._page.set_default_timeout(self.args.timeout * 1000)

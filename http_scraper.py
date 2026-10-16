@@ -9,7 +9,7 @@ One row per SKU (see output_writer). Several products in one run with
 `--url` repeated or `--urls-file`; a listing run's own output can be fed back
 in with `--from-listing potterybarn_products.json`.
 
-Three axes, all required (a rule of this scraper family), measured 2026-09-24
+Three axes, all required, measured 2026-09-24
 -------------------------------------------------------------------
 1. **The address.** From a non-US address `/robots.txt` 302s to
    potterybarn.co.uk and everything else answers the branded 403. A GB exit
@@ -273,7 +273,7 @@ def fetch(session, url: str, timeout: int, *, retries: int = 2,
 
     A refusal (`blocked`, `geo_redirect`) asks `rotate()` for a DIFFERENT
     exit; a transport fault (timeout, reset, TLS error at the exit) tries the
-    same exit again. Those want opposite responses (a rule of this scraper family).
+    same exit again. Those want opposite responses.
     """
     started = time.time()
     last: Optional[FetchResult] = None
@@ -470,7 +470,7 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
 
 
 def _dump(args, html: str, index: int) -> None:
-    """`--dump-html` writes on SUCCESS too (a rule of this scraper family)."""
+    """`--dump-html` writes on SUCCESS too."""
     if not getattr(args, "dump_html", None):
         return
     import os

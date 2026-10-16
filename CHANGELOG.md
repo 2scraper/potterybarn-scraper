@@ -5,6 +5,45 @@ follows SemVer as closely as a CLI toolkit can: a patch release means fixes,
 not a promise that every flag and default is frozen. Anything that changes
 behaviour for an existing user is called out at the top of its release.
 
+## [Unreleased]
+
+> **Behaviour changes.**
+> - A run with **zero rows** whose content was never obtained now exits
+>   **5**, not 4: a page that failed with an unexpected answer, a served
+>   product page with no product state, or a response that states results
+>   which did not parse. Exit 4 now means the site itself answered "nothing
+>   here" (a listing stating 0 results, a hub).
+> - `api_scraper.py`: a later page answering an unexpected HTTP status (a
+>   400, a 404) or a 200 that is not the listing shape now makes the run
+>   **partial, exit 6** (`stop_reason: page_failed`). It used to end the run
+>   as `complete`, exit 0, with the failed page listed in the same sidecar.
+> - A browse response that states its results and parses to none is
+>   `stop_reason: parser_found_nothing` (exit 5, or 6 with earlier rows),
+>   never the end of the listing. Applies to `api_scraper.py` and the browser
+>   engines' `--mode category`.
+> - Output files (JSON, CSV, both sidecars) were created **0600**. A new file
+>   now gets `0666` minus your umask, and an existing file keeps its mode.
+> - CSV cells starting `=`, `+`, `-`, `@`, tab, CR or LF are prefixed with an
+>   apostrophe (CSV only; JSON unchanged; count in `csv_cells_escaped`).
+
+### Fixed
+
+- `api_scraper.py --group-id` no longer fails with exit 2 when
+  `POTTERYBARN_URL` in `.env` holds a product page. The environment's URL is
+  used only when neither `--group-id` nor `--url` is typed, and only if it is
+  a category page; `.env.example` ships it commented out.
+- `tools/scan_secrets.py --worktree` also reads untracked files and
+  gitignored `.env.*` backups (by content), skips virtualenvs by their
+  `pyvenv.cfg`, prints how many files it read, and fails when it read none.
+- `.gitignore` covers output directories by kind (`out/`, `tmp/`, `dumps/`,
+  …), `*.pageN` dumps and raw HTML at the repository root.
+- The daily canary no longer goes green with product pages untested: without
+  the `POTTERYBARN_PROXY` secret the product-page half fails with an error
+  naming it, and both halves now also check the exit code (and the product
+  half its rows).
+- Comments that cited internal documents now state the rule in place, and
+  the suite fails if such a citation comes back.
+
 ## [1.0.0] — 2026-10-01
 
 First release. Measurements were made on 2026-09-24 and re-made on

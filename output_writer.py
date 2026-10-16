@@ -215,6 +215,25 @@ def _csv_value(v: Any) -> Any:
     return v
 
 
+# A spreadsheet EXECUTES a cell that begins with one of these, and every
+# string in these rows was written by the merchant or the listing API. The CSV
+# gets a leading apostrophe on such a cell (spreadsheets show it as text);
+# JSON keeps the site's bytes. Only STRINGS are escaped — a negative number
+# stays a number, or every sum a consumer writes over the column breaks — and
+# the check runs AFTER the list/dict serialisation, because a joined list is
+# text too. The count goes into the sidecar as `csv_cells_escaped`, so the
+# difference between the two outputs is declared rather than discovered.
+CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _csv_cell(v: Any):
+    """(cell, escaped?) for one value, after serialisation."""
+    v = _csv_value(v)
+    if isinstance(v, str) and v.startswith(CSV_FORMULA_PREFIXES):
+        return "'" + v, True
+    return v, False
+
+
 def _atomic_write(path: str, text: str) -> None:
     """Write `text` to `path` so a crash cannot truncate what was there.
 
@@ -232,6 +251,12 @@ def _atomic_write(path: str, text: str) -> None:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
+        # mkstemp creates the file 0600 and os.replace keeps that mode, so
+        # without this every output was readable by its owner only. A file
+        # that already exists keeps ITS mode; a new one gets what open()
+        # would have given it under the caller's umask — never a flat 0644,
+        # which would narrow a 0664 under umask 002.
+        os.chmod(tmp, _target_mode(path))
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -241,23 +266,41 @@ def _atomic_write(path: str, text: str) -> None:
         raise
 
 
+def _target_mode(path: str) -> int:
+    import os
+    import stat
+    try:
+        return stat.S_IMODE(os.stat(path).st_mode)
+    except FileNotFoundError:
+        pass
+    umask = os.umask(0)
+    os.umask(umask)
+    return 0o666 & ~umask
+
+
 def write_json(rows: Sequence[Any], path: str) -> None:
     payload = json.dumps([asdict(r) for r in rows], indent=2, ensure_ascii=False)
     _atomic_write(path, payload + "\n")
 
 
-def write_csv(rows: Sequence[Any], path: str, row_cls: Type = Product) -> None:
+def write_csv(rows: Sequence[Any], path: str, row_cls: Type = Product) -> int:
     """CSV with the same field order as JSON. An EMPTY result still carries
     its header, so a consumer reads a table with no rows instead of failing
-    on a zero-byte file."""
+    on a zero-byte file. Returns how many cells were formula-escaped."""
     import io
     names = [f.name for f in fields(row_cls)]
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=names, extrasaction="ignore")
     writer.writeheader()
+    escaped = 0
     for row in rows:
-        writer.writerow({k: _csv_value(v) for k, v in asdict(row).items()})
+        out = {}
+        for k, v in asdict(row).items():
+            out[k], hit = _csv_cell(v)
+            escaped += hit
+        writer.writerow(out)
     _atomic_write(path, buffer.getvalue())
+    return escaped
 
 
 EXIT_CRASH = 1
@@ -269,7 +312,9 @@ EXIT_NO_PRODUCTS = 4
 # OUR plumbing failed and the site never answered: a timeout, a dropped CDP
 # socket, a locked Scraping Browser profile, a proxy 407. Reporting any of
 # those as 3 sends the reader to the anti-bot problem when the answer is
-# somewhere else entirely (a rule of this scraper family).
+# somewhere else entirely. Also: zero rows from a run that never
+# obtained its content (a failed page, a served page whose stated rows did not
+# parse) — "nothing listed" would be a claim the run cannot make.
 EXIT_REMOTE_API_ERROR = 5
 EXIT_PARTIAL = 6
 
@@ -345,10 +390,12 @@ def run_meta(status: str, stop_reason: str, pages_requested: int,
 
 
 def save(rows: Sequence[Any], out_prefix: str, fmt: str,
-         allow_empty: bool = False, row_cls: Type = Product) -> int:
+         allow_empty: bool = False, row_cls: Type = Product,
+         stats: Optional[dict] = None) -> int:
     """Write JSON/CSV and return an exit code. Zero rows writes NOTHING unless
     `allow_empty` — a run that finds nothing must not replace yesterday's good
-    output with an empty file (a rule of this scraper family)."""
+    output with an empty file. `stats`, when given, receives
+    `csv_cells_escaped`."""
     if not rows and not allow_empty:
         print(f"[!] 0 rows — refusing to write {out_prefix}.json/.csv, so an "
               f"earlier good result isn't overwritten with an empty one. "
@@ -358,13 +405,23 @@ def save(rows: Sequence[Any], out_prefix: str, fmt: str,
         write_json(rows, f"{out_prefix}.json")
         print(f"[+] Saved {len(rows)} row(s) -> {out_prefix}.json")
     if fmt in ("csv", "both"):
-        write_csv(rows, f"{out_prefix}.csv", row_cls=row_cls)
+        escaped = write_csv(rows, f"{out_prefix}.csv", row_cls=row_cls)
+        if stats is not None:
+            stats["csv_cells_escaped"] = escaped
         print(f"[+] Saved {len(rows)} row(s) -> {out_prefix}.csv")
     return 0 if rows else EXIT_NO_PRODUCTS
 
 
 COMPLETE_STOP_REASONS = ("completed", "pagination_exhausted", "no_new_products",
                          "single_page_mode")
+
+# A run with ZERO rows exits 4 ("nothing listed") only when it stopped for one
+# of the reasons above: the site answered and the answer was empty. Every
+# other reason — a failed page, a served page whose stated rows did not
+# parse, a reason nobody has named yet — means the content was never
+# obtained, which is exit 5. Keyed on the COMPLETE list rather than on a list
+# of failures, because a failure list cannot cover a reason added later and
+# would let it fall through to "the catalogue is empty".
 
 
 def finish_run(rows: Sequence[Any], out_prefix: str, fmt: str,
@@ -385,7 +442,9 @@ def finish_run(rows: Sequence[Any], out_prefix: str, fmt: str,
     import uuid
     complete = stop_reason in COMPLETE_STOP_REASONS
     row_cls = ROW_CLASS_BY_MODE.get(mode, Product)
-    rc = save(rows, out_prefix, fmt, allow_empty=allow_empty, row_cls=row_cls)
+    stats: dict = {}
+    rc = save(rows, out_prefix, fmt, allow_empty=allow_empty, row_cls=row_cls,
+              stats=stats)
     wrote_output = bool(rows) or allow_empty
 
     status = "complete" if (rows and complete) else ("partial" if rows else "failed")
@@ -396,6 +455,8 @@ def finish_run(rows: Sequence[Any], out_prefix: str, fmt: str,
         start_url=start_url, final_url=final_url, products=len(rows))
     base["run_id"] = uuid.uuid4().hex[:12]
     base["blocked"] = bool(blocked)
+    if "csv_cells_escaped" in stats:
+        base["csv_cells_escaped"] = stats["csv_cells_escaped"]
     if extra:
         base["transport_facts"] = extra
 
@@ -406,7 +467,14 @@ def finish_run(rows: Sequence[Any], out_prefix: str, fmt: str,
     if not rows:
         if transport_error:
             return EXIT_REMOTE_API_ERROR
-        return EXIT_BLOCKED if blocked else rc
+        if blocked:
+            return EXIT_BLOCKED
+        if not complete:
+            print(f"[!] 0 rows and the run did not finish ({stop_reason}): the "
+                  f"content was never obtained, which is not the same as an "
+                  f"empty listing — see {out_prefix}{ATTEMPT_META_SUFFIX}.")
+            return EXIT_REMOTE_API_ERROR
+        return rc
     if not complete:
         print(f"[!] Partial run: stopped after {pages_completed} of "
               f"{pages_requested} page(s) ({stop_reason}). The output holds "

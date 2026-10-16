@@ -7,10 +7,11 @@ name: canary
 #    address (2026-09-24). Whether it answers a GitHub runner's DATACENTRE
 #    address is exactly what this half measures. Three pages or more, so
 #    pagination is exercised: with one page it never is.
-# 2. A PRODUCT PAGE — only with the POTTERYBARN_PROXY secret. potterybarn.com
-#    refuses every non-US address, and a runner is one, so without the secret
-#    this half goes GREEN with a ::notice:: rather than red every day. A check
-#    that is always red teaches everyone to ignore checks.
+# 2. A PRODUCT PAGE — needs the POTTERYBARN_PROXY secret (a US exit).
+#    potterybarn.com refuses every non-US address, and a runner is one. Without
+#    the secret this half FAILS with an ::error:: naming it: a skipped half
+#    reported green meant product pages went untested while the badge said
+#    otherwise.
 permissions:
   contents: read
 
@@ -50,6 +51,8 @@ jobs:
           facts = meta.get("transport_facts", {})
           print("exit code:", os.environ.get("listing_rc"), "states:", facts.get("states"))
           fails = []
+          if os.environ.get("listing_rc") != "0":
+              fails.append("exit code %s" % os.environ.get("listing_rc"))
           if meta["status"] != "complete":
               fails.append("status=%s stop=%s" % (meta["status"], meta["stop_reason"]))
           else:
@@ -87,12 +90,13 @@ jobs:
           print("listing canary OK")
           PY
 
-      - name: Product page — explain the skip
+      - name: Product page — secret missing
         if: env.HAS_PROXY != 'true'
         run: |
-          echo "::notice::Product-page half skipped: no POTTERYBARN_PROXY secret."
-          echo "::notice::potterybarn.com refuses every non-US address (measured"
-          echo "::notice::2026-09-23/24) and a GitHub runner is a datacentre address."
+          echo "::error::Product-page half NOT tested: the POTTERYBARN_PROXY secret is not set."
+          echo "potterybarn.com refuses every non-US address (measured 2026-09-23/24) and a"
+          echo "GitHub runner is a datacentre address, so this half needs a US proxy exit."
+          exit 1
 
       - name: Product page — live
         if: env.HAS_PROXY == 'true'
@@ -103,13 +107,20 @@ jobs:
           set +e
           python http_scraper.py --url https://www.potterybarn.com/products/delaney-marble-end-table/ \
             --out canary_product --verbose
-          echo "product_rc=$?" >> "$GITHUB_ENV"
+          # GITHUB_ENV reaches LATER steps only; the check below is this step.
+          export product_rc=$?
+          echo "product_rc=$product_rc" >> "$GITHUB_ENV"
           set -e
           python - <<'PY'
-          import json, sys
+          import json, os, sys
           meta = json.load(open("canary_product.latest_attempt.meta.json"))
-          if meta["status"] != "complete":
-              print("::error::product canary: %s / %s" % (meta["status"], meta["stop_reason"]))
+          if os.environ.get("product_rc") != "0" or meta["status"] != "complete":
+              print("::error::product canary: exit %s, %s / %s" % (
+                  os.environ.get("product_rc"), meta["status"], meta["stop_reason"]))
+              sys.exit(1)
+          rows = json.load(open("canary_product.json"))
+          if not rows or any(r["price"] is None or not r["sku"] for r in rows):
+              print("::error::product canary: %d rows, or a row without sku/price" % len(rows))
               sys.exit(1)
           check = meta["transport_facts"]["products"][0]["sku_check"]
           if not check["closes"]:

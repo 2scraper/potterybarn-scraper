@@ -2,7 +2,7 @@
 
 The engines differ only in how they start a browser and how they ask it for
 a URL and for the rendered document. Everything that decides what a run DOES
-lives here, once. No JavaScript crosses this boundary (a rule of this scraper family).
+lives here, once. No JavaScript crosses this boundary.
 
 What the browser is FOR on this site — measured
 -----------------------------------------------
@@ -45,7 +45,7 @@ ended one holds it: measured 2026-09-24, a navigation that timed out (60 s,
 `wait_until="load"` on a page whose load event never fires) left the profile
 answering 500 on the next connect. So a run opens exactly one connection,
 closes it in `finally`, never retries a connect, and never calls
-`GET /json/version` — that check takes the lock itself (a rule of this scraper family).
+`GET /json/version` — that check takes the lock itself.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class BridgeError(RuntimeError):
     """The BROWSER could not do its job — the site never answered.
 
     A navigation timeout, a dropped CDP socket, a locked profile: our
-    plumbing, not a refusal. Exit 5, never 3 (a rule of this scraper family).
+    plumbing, not a refusal. Exit 5, never 3.
     """
 
 
@@ -385,11 +385,21 @@ def run(args, driver) -> int:
                     facts["transport_error"] = state == "transport_error"
                     print("page %d: %s (HTTP %s)" % (page, state, status), file=sys.stderr)
                     break
-                facts["totals_seen"].append(P.browse_total(payload))
+                total = P.browse_total(payload)
+                facts["totals_seen"].append(total)
                 if page == 1:
                     facts["group"] = P.browse_group(payload)
                 page_rows = P.parse_browse_response(payload, currency=currency,
                                                     category=label)
+                if not page_rows and P.page_inside_total(page, total):
+                    # Same rule as api_scraper: a page the response's own
+                    # total says holds rows, parsed to none, is a parsing
+                    # failure — never the end of the listing.
+                    facts["failed_pages"].append(page)
+                    facts["parser_found_nothing"] = True
+                    print("page %d: the response states %s results but none "
+                          "parsed" % (page, total), file=sys.stderr)
+                    break
                 for row in page_rows:
                     row.page = page
                 fresh = output_writer.dedupe_by_sku(page_rows, seen)
@@ -446,6 +456,8 @@ def _stop_reason(args, facts: Dict[str, Any]) -> str:
         return "sku_count_mismatch"
     if facts.get("max_products_reached"):
         return "max_products_reached"
+    if facts.get("parser_found_nothing"):
+        return "parser_found_nothing"
     if facts["failed_pages"]:
         return "incomplete"
     if args.mode == "product":

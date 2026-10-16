@@ -98,8 +98,8 @@ class CaptchaChallenge:
     page_url: str = ""
     # AWS WAF only. Its task needs three values that all live together in
     # `window.gokuProps` on the challenge page, plus the two script URLs the
-    # page loads. Unlike Cloudflare Turnstile (§19 of the family notes),
-    # nothing has to be intercepted at runtime to get them: AWS WAF prints
+    # page loads. Unlike Cloudflare Turnstile, whose parameters exist only
+    # inside a runtime call, nothing has to be intercepted at runtime to get them: AWS WAF prints
     # all of it into the served HTML, so a static read is enough.
     iv: Optional[str] = None
     context: Optional[str] = None
@@ -965,7 +965,7 @@ def solve_on_page(driver, html: str, *, url: str, api_key: Optional[str],
 
     The driver injects the token through its own `inject_token(token)` —
     each engine writes that one call in its own JavaScript dialect, so no
-    JavaScript crosses the bridge (a rule of this scraper family). An engine without
+    JavaScript crosses the bridge. An engine without
     it returns False here rather than paying for a token it cannot use.
     """
     challenge = detect_rendered_widget(html, url)
