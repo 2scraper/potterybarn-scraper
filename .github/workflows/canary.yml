@@ -1,6 +1,7 @@
 name: canary
 
-# One real run a day, in two halves that need different things.
+# One real run a day, in two halves that need different things. The paid
+# half runs on Mondays only (and on a manual dispatch): every run bills.
 #
 # 1. THE LISTING — always live. The listing comes from Constructor.io's browse
 #    API, which answered a plain request with no proxy from a residential
@@ -8,7 +9,8 @@ name: canary
 #    address is exactly what this half measures. Three pages or more, so
 #    pagination is exercised: with one page it never is.
 # 2. A PRODUCT PAGE — needs the POTTERYBARN_PROXY secret (a US exit).
-#    potterybarn.com refuses every non-US address, and a runner is one. Without
+#    potterybarn.com refuses every non-US address, and a runner is one. It runs
+#    on the weekly (Monday) schedule and on a manual dispatch, not daily. Without
 #    the secret this half FAILS with an ::error:: naming it: a skipped half
 #    reported green meant product pages went untested while the badge said
 #    otherwise.
@@ -18,6 +20,9 @@ permissions:
 on:
   schedule:
     - cron: "23 6 * * *"
+    # Mondays only: the product-page half (POTTERYBARN_PROXY) runs on this
+    # schedule (each run bills); the listing half runs on both.
+    - cron: "23 6 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -26,6 +31,8 @@ jobs:
     env:
       # `secrets` is not available in a job-level `if`; test through env.
       HAS_PROXY: ${{ secrets.POTTERYBARN_PROXY != '' }}
+      # The product-page half bills the proxy: weekly schedule or dispatch only.
+      PAID_RUN: ${{ github.event_name != 'schedule' || github.event.schedule == '23 6 * * 1' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -91,7 +98,7 @@ jobs:
           PY
 
       - name: Product page — secret missing
-        if: env.HAS_PROXY != 'true'
+        if: env.PAID_RUN == 'true' && env.HAS_PROXY != 'true'
         run: |
           echo "::error::Product-page half NOT tested: the POTTERYBARN_PROXY secret is not set."
           echo "potterybarn.com refuses every non-US address (measured 2026-09-23/24) and a"
@@ -99,7 +106,7 @@ jobs:
           exit 1
 
       - name: Product page — live
-        if: env.HAS_PROXY == 'true'
+        if: env.PAID_RUN == 'true' && env.HAS_PROXY == 'true'
         # The credential goes through the ENVIRONMENT, never a --proxy flag.
         env:
           POTTERYBARN_PROXY: ${{ secrets.POTTERYBARN_PROXY }}
