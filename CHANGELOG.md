@@ -7,6 +7,8 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-10-16
+
 > **Behaviour changes.**
 > - A run with **zero rows** whose content was never obtained now exits
 >   **5**, not 4: a page that failed with an unexpected answer, a served
