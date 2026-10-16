@@ -81,7 +81,7 @@ Not because these do not matter, but because they belong somewhere else:
 
 ## Supported versions
 
-The latest release (see the repository's Releases; `v1.0.0` at the time of
+The latest release (see the repository's Releases; `v1.1.0` at the time of
 writing) and `main`. Fixes land on `main` first. If you are running an older
 clone, update before reporting.
 

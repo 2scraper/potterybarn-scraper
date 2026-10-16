@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "potterybarn-scraper"
-version = "1.0.0"
+version = "1.1.0"
 description = "potterybarn.com listing and product scraper — the site's own listing API, per-SKU product pages over curl, Playwright/Selenium/Puppeteer or a Scraping Browser via CDP"
 readme = "README.md"
 requires-python = ">=3.9"
