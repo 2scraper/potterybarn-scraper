@@ -9,9 +9,7 @@ behaviour for an existing user is called out at the top of its release.
 
 ### Changed
 
-- CI only: the canary's paid product-page half (`POTTERYBARN_PROXY`) now runs
-  weekly (Mondays 06:23 UTC) and on a manual dispatch; the free listing half
-  still runs daily.
+- CI only: the whole canary, free and paid jobs alike, now runs weekly (Mondays 06:23 UTC) and on a manual dispatch; the daily schedule is removed.
 
 ## [1.1.0] — 2026-10-16
 
