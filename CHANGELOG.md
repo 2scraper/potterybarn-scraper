@@ -9,6 +9,13 @@ behaviour for an existing user is called out at the top of its release.
 
 ### Changed
 
+- When the proxy refuses its credential (HTTP 407), `http_scraper.py` and
+  `api_scraper.py` now write `<out>.latest_attempt.meta.json` with
+  `status: failed` and `stop_reason: proxy_auth_failed`. They still exit 5
+  and leave the data and `<out>.meta.json` untouched. Before this change, a
+  407 run wrote no sidecar at all, and the canary step that reads the sidecar
+  crashed with `FileNotFoundError` and no `::error::` line. The canary now
+  also reports a missing sidecar as an error.
 - CI only: the whole canary, free and paid jobs alike, now runs weekly (Mondays 06:23 UTC) and on a manual dispatch; the daily schedule is removed.
 
 ## [1.1.0] — 2026-10-16

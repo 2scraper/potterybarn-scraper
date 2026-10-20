@@ -779,9 +779,29 @@ def test_a_proxy_407_is_not_a_site_block():
         except http_scraper.ProxyAuthError:
             kind = "proxy"
     eq("407 raises ProxyAuthError", kind, "proxy")
+    tmp = tempfile.mkdtemp()
+    out = os.path.join(tmp, "run")
     with mock.patch.object(http_scraper, "scrape", side_effect=http_scraper.ProxyAuthError("407")):
-        rc, _ = quiet(http_scraper.main, ["--url", "https://www.potterybarn.com/products/x/"])
+        rc, _ = quiet(http_scraper.main, ["--url", "https://www.potterybarn.com/products/x/",
+                                          "--out", out])
     eq("...and the run exits 5, not 3", rc, 5)
+    # The canary reads the attempt sidecar; a 407 run without one crashed it
+    # with FileNotFoundError and no annotation (2026-10-20).
+    attempt = out + W.ATTEMPT_META_SUFFIX
+    meta = json.load(open(attempt)) if os.path.exists(attempt) else {}
+    eq("...and records the 407 in the attempt sidecar",
+       (meta.get("status"), meta.get("stop_reason"), meta.get("start_url"), meta.get("data_updated")),
+       ("failed", "proxy_auth_failed", "https://www.potterybarn.com/products/x/", False))
+    eq("...without writing data or the dataset sidecar",
+       sorted(os.listdir(tmp)), ["run" + W.ATTEMPT_META_SUFFIX])
+    import api_scraper
+    out = os.path.join(tmp, "listing")
+    with mock.patch.object(api_scraper, "scrape", side_effect=http_scraper.ProxyAuthError("407")):
+        rc, _ = quiet(api_scraper.main, ["--group-id", "g", "--out", out])
+    attempt = out + W.ATTEMPT_META_SUFFIX
+    meta = json.load(open(attempt)) if os.path.exists(attempt) else {}
+    eq("api_scraper: a 407 exits 5 and records it in the attempt sidecar",
+       (rc, meta.get("status"), meta.get("stop_reason")), (5, "failed", "proxy_auth_failed"))
 
 
 def test_fetch_rotates_on_a_refusal_not_on_a_timeout():
