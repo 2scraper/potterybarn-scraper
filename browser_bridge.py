@@ -324,6 +324,24 @@ def run(args, driver) -> int:
     rows: List[Any] = []
     seen: set = set()
 
+    if not args.cdp_endpoint:
+        pool = proxy_pool.from_args(args)
+        if pool:
+            # One HEAD for robots.txt through the proxy BEFORE the browser
+            # starts: a gateway 407/402 ends the run here, at exit 5.
+            try:
+                proxy_pool.precheck_proxy(pool.current, proxy_pool.robots_url(start_url),
+                                          timeout=min(args.timeout, 30))
+            except proxy_pool.ProxyPrecheckError as exc:
+                print(proxy_pool.precheck_message(exc, "POTTERYBARN_PROXY",
+                                                  "potterybarn.com"), file=sys.stderr)
+                output_writer.write_failed_attempt(
+                    args.out, stop_reason=proxy_pool.PROXY_PRECHECK_STOP_REASON,
+                    mode=args.mode, start_url=start_url,
+                    pages_requested=facts["pages_requested"],
+                    transport_error="proxy pre-check: %s" % exc)
+                return EXIT_REMOTE_API_ERROR
+
     try:
         driver.start()
     except Exception as exc:  # noqa: BLE001
@@ -332,6 +350,7 @@ def run(args, driver) -> int:
               file=sys.stderr)
         return EXIT_REMOTE_API_ERROR
     facts["over_cdp"] = bool(getattr(driver, "over_cdp", False))
+    facts["media_blocked"] = bool(getattr(driver, "media_blocked", False))
     if not facts["over_cdp"]:
         print("[!] a LOCAL browser was measured refused on this site's product "
               "pages: 0 of 19 trials got one (2026-09-24 and 10-01), headless "
@@ -546,6 +565,12 @@ def build_parser(description: str):
     p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES,
                    default="per-run")
     p.add_argument("--proxy-shuffle", action="store_true")
+    p.add_argument("--load-media", action="store_true",
+                   help="Load images, video and web fonts. By default they are "
+                        "aborted while a local browser goes through --proxy / "
+                        "--proxy-file (no parser reads them, and the proxy bills "
+                        "per byte); never blocked with --cdp-endpoint or no proxy.")
+    p.add_argument("--force-block-media", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--twocaptcha-key", default=None,
                    help="Prefer TWOCAPTCHA_KEY in .env — `ps` reads argv.")
     p.add_argument("--captcha-api", choices=["v2", "v1"], default="v2")

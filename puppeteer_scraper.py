@@ -37,6 +37,7 @@ class PuppeteerDriver:
     def __init__(self, args):
         self.args = args
         self.over_cdp = False
+        self.media_blocked = False
         self._loop = self._browser = self._page = None
         self._response = None
 
@@ -85,6 +86,9 @@ class PuppeteerDriver:
                     "pyppeteer cannot authenticate the proxy with this browser "
                     "(%s). Use playwright_scraper.py, or http_scraper.py for "
                     "product pages." % browser_bridge.mask_text(str(exc))[:120]) from None
+        if proxy_pool.should_block_media(self.args, proxy_in_use=bool(pool)):
+            self._run(proxy_pool.pyppeteer_block_media(self._page))
+            self.media_blocked = True
 
     def navigate(self, url):
         # pyppeteer has no `commit` wait; DOMContentLoaded is the earliest.

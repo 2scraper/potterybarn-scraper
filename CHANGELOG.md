@@ -7,7 +7,27 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+> **Behaviour changes.**
+> - The browser engines (`playwright_scraper.py`, `puppeteer_scraper.py`,
+>   `selenium_scraper.py`) send ONE `HEAD` for the site's `robots.txt`
+>   through `--proxy` / `--proxy-file` before starting a local browser. A
+>   gateway `407` or `402` now ends the run there with exit 5 and
+>   `stop_reason: proxy_auth_failed` in `<out>.latest_attempt.meta.json`,
+>   instead of starting a browser on a refused proxy.
+> - Behind a local proxy, those engines now abort images, video/audio and
+>   web fonts. `--load-media` restores them. Nothing changes with
+>   `--cdp-endpoint` or with no proxy.
+
+### Added
+
+- `--load-media` on the browser engines.
+
 ### Changed
+
+- A proxy `402` (traffic/balance exhausted) is handled like a `407` in
+  `http_scraper.py`, `api_scraper.py` and `catalog_walk.py --via-proxy`:
+  exit 5, never retried or rotated. `catalog_walk.py` reported a proxy `407`
+  on an `http://` request as blocked (exit 3); it is now exit 5.
 
 - When the proxy refuses its credential (HTTP 407), `http_scraper.py` and
   `api_scraper.py` now write `<out>.latest_attempt.meta.json` with

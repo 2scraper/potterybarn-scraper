@@ -500,6 +500,33 @@ been measured to be *transient* (homedepot-scraper: an hour of 407s, then 200
 the next day with nothing changed), so "retry later" comes before "replace
 the credential".
 
+### Two traffic savers behind a proxy
+
+* **Proxy pre-check.** Before a browser engine starts a local browser behind
+  `--proxy` / `--proxy-file`, it sends ONE `HEAD` for
+  `https://www.potterybarn.com/robots.txt` through that proxy. A gateway
+  `407` (the credential was refused, or the traffic balance is exhausted) or
+  `402` (traffic/balance exhausted) ends the run there: exit `5`, a message
+  naming `POTTERYBARN_PROXY` (never its value), and
+  `<out>.latest_attempt.meta.json` with `status: failed` and
+  `stop_reason: proxy_auth_failed`. Any other answer, or a transport error,
+  is not a verdict on the proxy and the run goes on as before. `http_scraper.py`,
+  `api_scraper.py` and `catalog_walk.py --via-proxy` need no extra request:
+  their first request already stops the run the same way on a `407` or `402`.
+  Nothing is pre-checked with `--cdp-endpoint`.
+* **Media blocking.** While a LOCAL browser goes through `--proxy` /
+  `--proxy-file`, images, video/audio and web fonts are aborted: no parser
+  here reads them, and a residential proxy bills per byte. Playwright and
+  pyppeteer abort them by resource type; Selenium blocks them by file
+  extension (`Network.setBlockedURLs`), so an image served without one still
+  loads there. Playwright turns its HTTP cache off while a route is
+  installed, so scripts are fetched again on every page of a multi-page
+  browser run. Nothing is blocked with `--cdp-endpoint` or with no proxy, and
+  `--load-media` keeps everything. `<out>.meta.json` records
+  `transport_facts.media_blocked`. Measured 2026-10-20 with no proxy and the
+  blocking forced on: one sofa listing page through Playwright gave the same
+  24 SKUs, every field identical, as the same run without blocking.
+
 **The CSV escapes formula-shaped cells.** A text cell beginning `=`, `+`,
 `-`, `@`, a tab or a line break gets a leading apostrophe in the CSV only, so
 a spreadsheet shows it instead of executing it; numbers are untouched and the

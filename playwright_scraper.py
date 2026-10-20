@@ -34,6 +34,7 @@ class PlaywrightDriver:
     def __init__(self, args):
         self.args = args
         self.over_cdp = False
+        self.media_blocked = False
         self.autosolve_armed = False
         self.autosolve_events = []
         self.autosolve_notes = []
@@ -67,6 +68,9 @@ class PlaywrightDriver:
             # No user agent and no fingerprint: a hardcoded UA drifts from the
             # installed Chromium.
             self._context = self._browser.new_context(locale="en-US")
+            if proxy_pool.should_block_media(self.args, proxy_in_use=bool(pool)):
+                self._context.route("**/*", proxy_pool.playwright_media_route)
+                self.media_blocked = True
         self._page = self._context.new_page()
         self._page.set_default_timeout(self.args.timeout * 1000)
         if self.over_cdp:
