@@ -1459,6 +1459,40 @@ def test_http_served_page_without_state_is_not_an_empty_catalogue():
     eq("http: a served page with no product state, 0 rows -> exit 5, not 4", rc, 5)
 
 
+def test_http_unparsed_product_page_records_its_shape():
+    """Canary 2026-10-20: a product URL served 536 KB (HTTP 200) through the
+    proxy, classified `empty`, and the sidecar said only that. The shape of
+    such a page (key names, never values) now reaches transport_facts, and
+    the canary dumps the HTML."""
+    import http_scraper
+    shape = P.page_shape(fixture("product_delaney.html"))
+    eq("page_shape: a parseable product page", (shape["has_state_anchor"], shape["state_parsed"],
+                                                 "groupId" in (shape["details_keys"] or [])), (True, True, True))
+    # The same page with its productDetails node renamed: a state-shape change.
+    moved = fixture("product_delaney.html").replace('"productDetails"', '"productDetailsV2"')
+    check("fixture edited", '"productDetailsV2"' in moved and '"productDetails"' not in moved)
+    moved = moved.replace("</body>", "<div>" + "x" * 9000 + "</div></body>")
+    url = "https://www.potterybarn.com/products/delaney-marble-end-table/"
+
+    class S:
+        def get(self, target, **kw):
+            return http_scraper._Response(200, moved, target)
+    tmp = tempfile.mkdtemp()
+    with mock.patch.object(http_scraper, "build_session", lambda *a, **k: S()):
+        rc, _ = quiet(http_scraper.main, ["--url", url, "--delay", "0", "--retries", "0",
+                                          "--out", tmp + "/o", "--format", "json",
+                                          "--dump-html", tmp + "/o.html"])
+    meta = json.load(open(tmp + "/o.latest_attempt.meta.json"))
+    pages = meta["transport_facts"].get("unparsed_pages") or [{}]
+    eq("a served product URL with a moved productDetails -> exit 5", rc, 5)
+    eq("...its shape is in the sidecar",
+       (pages[0].get("page"), pages[0].get("state"), pages[0].get("status"), pages[0].get("state_parsed"),
+        pages[0].get("details_keys"), "product" in (pages[0].get("state_keys") or [])),
+       (1, "empty", 200, True, None, True))
+    check("...with key names only, no values", '"Delaney' not in json.dumps(pages))
+    check("...and --dump-html kept the page", os.path.getsize(tmp + "/o_p1.html") == len(moved))
+
+
 def _mode(path):
     import stat
     return stat.S_IMODE(os.stat(path).st_mode)
