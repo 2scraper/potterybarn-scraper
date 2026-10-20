@@ -360,6 +360,24 @@ def write_attempt_meta(out_prefix: str, meta: dict) -> str:
     return write_run_meta(out_prefix, meta, suffix=ATTEMPT_META_SUFFIX)
 
 
+
+def write_failed_attempt(out_prefix: str, *, stop_reason: str, mode: str,
+                         start_url: Optional[str], pages_requested: int,
+                         transport_error: str) -> str:
+    """Record a run that ended before `finish_run` could, e.g. because the
+    proxy refused its credential on the first request. Only the attempt
+    sidecar is written: `.meta.json` and the data beside it stay as they were.
+    """
+    import uuid
+    meta = run_meta(status="failed", stop_reason=stop_reason,
+                    pages_requested=pages_requested, pages_completed=0,
+                    start_url=start_url, final_url=start_url, products=0,
+                    mode=mode)
+    meta.update(run_id=uuid.uuid4().hex[:12], blocked=False,
+                transport_error=transport_error, data_updated=False)
+    return write_attempt_meta(out_prefix, meta)
+
+
 def schema_version(row_cls: Type = Product) -> str:
     names = ",".join(f.name for f in fields(row_cls))
     return hashlib.sha256(names.encode()).hexdigest()[:12]

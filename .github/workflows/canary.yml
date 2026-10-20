@@ -47,6 +47,9 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, sys
+          if not os.path.exists("canary_listing.latest_attempt.meta.json"):
+              print("::error::canary_listing: exit %s and no attempt sidecar was written" % os.environ.get("listing_rc"))
+              sys.exit(1)
           meta = json.load(open("canary_listing.latest_attempt.meta.json"))
           facts = meta.get("transport_facts", {})
           print("exit code:", os.environ.get("listing_rc"), "states:", facts.get("states"))
@@ -113,6 +116,9 @@ jobs:
           set -e
           python - <<'PY'
           import json, os, sys
+          if not os.path.exists("canary_product.latest_attempt.meta.json"):
+              print("::error::canary_product: exit %s and no attempt sidecar was written" % os.environ.get("product_rc"))
+              sys.exit(1)
           meta = json.load(open("canary_product.latest_attempt.meta.json"))
           if os.environ.get("product_rc") != "0" or meta["status"] != "complete":
               print("::error::product canary: exit %s, %s / %s" % (

@@ -581,6 +581,15 @@ def main(argv=None) -> int:
               "was never reached.\n    Check POTTERYBARN_PROXY in .env. A 407 "
               "has been measured to be transient on this vendor: retry later "
               "before replacing anything." % exc, file=sys.stderr)
+        try:
+            targets = targets_from_args(args)
+        except (OSError, ValueError, KeyError):
+            targets = []
+        output_writer.write_failed_attempt(
+            args.out, stop_reason="proxy_auth_failed", mode="product",
+            start_url=targets[0] if targets else None,
+            pages_requested=len(targets),
+            transport_error="proxy refused the credential")
         return output_writer.EXIT_REMOTE_API_ERROR
     except SystemExit:
         raise
