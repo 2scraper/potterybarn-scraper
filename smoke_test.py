@@ -1586,6 +1586,215 @@ def test_gitignore_covers_capture_kinds():
         eq(".gitignore: %s %s" % (path, "ignored" if ignored else "kept"), res.returncode == 0, ignored)
 
 
+# ---------------------------------------------------------------------------
+# Traffic savers: the proxy pre-check and media blocking
+# ---------------------------------------------------------------------------
+
+def _status_proxy(status):
+    """A local stand-in for a proxy gateway that answers every request,
+    CONNECT included, with `status`. Returns (server, port, hits)."""
+    import http.server
+    import socketserver
+    import threading
+    hits = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _answer(self):
+            hits.append((self.command, self.path))
+            self.send_response(status)
+            self.send_header("Content-Length", "0")
+            self.send_header("Proxy-Authenticate", 'Basic realm="stub"')
+            self.end_headers()
+        do_CONNECT = do_GET = do_HEAD = _answer
+
+    server = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server, server.server_address[1], hits
+
+
+def test_proxy_precheck_stops_before_the_browser():
+    import browser_bridge
+    import proxy_pool
+    url = "https://www.potterybarn.com/products/delaney-marble-end-table/"
+    for status, words in ((407, "refused the credential"), (402, "balance exhausted")):
+        server, port, hits = _status_proxy(status)
+        try:
+            tmp = tempfile.mkdtemp()
+            driver = StubDriver([fixture("product_delaney.html")])
+            driver.over_cdp = False
+            proxy = "http://user:S3cretPw@127.0.0.1:%d" % port
+            rc, text = quiet(browser_bridge.run, _bridge_args(
+                ["--url", url, "--out", tmp + "/run", "--proxy", proxy]), driver)
+        finally:
+            server.shutdown()
+            server.server_close()
+        eq("pre-check: a proxy %d exits 5" % status, rc, 5)
+        eq("pre-check: ...before the browser is started (%d)" % status, driver.started, 0)
+        eq("pre-check: ...after ONE request, for robots.txt (%d)" % status,
+           hits, [("CONNECT", "www.potterybarn.com:443")])
+        check("pre-check: ...says why (%d)" % status, words in text and "POTTERYBARN_PROXY" in text,
+              text[-300:])
+        check("pre-check: ...and never prints the credential (%d)" % status,
+              "S3cretPw" not in text)
+        meta_path = tmp + "/run" + W.ATTEMPT_META_SUFFIX
+        meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+        eq("pre-check: ...attempt sidecar failed/proxy_auth_failed (%d)" % status,
+           (meta.get("status"), meta.get("stop_reason"), meta.get("data_updated")),
+           ("failed", "proxy_auth_failed", False))
+        eq("pre-check: ...and no data or dataset sidecar (%d)" % status,
+           sorted(os.listdir(tmp)), ["run" + W.ATTEMPT_META_SUFFIX])
+    # Not a gateway verdict: a site 403 through the tunnel, or no proxy at
+    # all, keeps the run going exactly as before.
+    server, port, hits = _status_proxy(403)
+    try:
+        got = proxy_pool.precheck_proxy("http://u:p@127.0.0.1:%d" % port,
+                                        "https://www.potterybarn.com/robots.txt", 5)
+    finally:
+        server.shutdown()
+        server.server_close()
+    eq("pre-check: a 403 is not a proxy failure", got, None)
+    eq("pre-check: an unreachable proxy is not a proxy failure (transport keeps its path)",
+       proxy_pool.precheck_proxy("http://u:p@127.0.0.1:1", "https://x.invalid/robots.txt", 3), None)
+    eq("pre-check: no proxy, no request", proxy_pool.precheck_proxy(None, "https://x/robots.txt"), None)
+    eq("pre-check: robots.txt of the start URL",
+       proxy_pool.robots_url("https://www.potterybarn.com/products/x/?a=1"),
+       "https://www.potterybarn.com/robots.txt")
+    driver = StubDriver([fixture("product_delaney.html")])
+    with mock.patch.object(proxy_pool, "precheck_proxy",
+                           side_effect=AssertionError("pre-check over CDP")):
+        rc, _ = quiet(browser_bridge.run, _bridge_args(
+            ["--url", url, "--out", tempfile.mkdtemp() + "/c",
+             "--cdp-endpoint", "ws://127.0.0.1:1"]), driver)
+    eq("pre-check: never run over CDP (the remote browser brings its own exit)", rc, 0)
+
+
+def test_http_paths_treat_a_402_like_a_407():
+    import http_scraper
+    with mock.patch.object(http_scraper.subprocess, "run",
+                           lambda c, input=None, **k: _completed("", rc=56, stderr="CONNECT tunnel failed, response 402")):
+        try:
+            http_scraper.CurlSession("http://a:b@h:1").get("https://www.potterybarn.com/")
+            status = None
+        except http_scraper.ProxyAuthError as exc:
+            status = exc.status
+    eq("curl: a CONNECT 402 raises ProxyAuthError(402)", status, 402)
+    tmp = tempfile.mkdtemp()
+    with mock.patch.object(http_scraper, "scrape", side_effect=http_scraper.ProxyAuthError(status=402)):
+        rc, text = quiet(http_scraper.main, ["--url", "https://www.potterybarn.com/products/x/",
+                                             "--out", tmp + "/r"])
+    eq("http_scraper: a 402 exits 5", rc, 5)
+    check("http_scraper: ...and says the balance is exhausted", "balance exhausted" in text, text[-200:])
+    import catalog_walk
+    server, port, _ = _status_proxy(407)
+    try:
+        with mock.patch.dict(os.environ, {"POTTERYBARN_PROXY": "http://u:S3cretPw@127.0.0.1:%d" % port}):
+            rc, text = quiet(catalog_walk.main, ["categories", "--via-proxy", "--timeout", "5"])
+    finally:
+        server.shutdown()
+        server.server_close()
+    eq("catalog_walk: a proxy 407 exits 5, not 3", rc, 5)
+    check("catalog_walk: ...without printing the credential",
+          "S3cretPw" not in text and "refused the credential" in text, text[-200:])
+
+
+def test_media_blocking_policy():
+    import proxy_pool
+    ns = argparse.Namespace
+    eq("media: blocked behind a local proxy",
+       proxy_pool.should_block_media(ns(load_media=False), proxy_in_use=True), True)
+    eq("media: --load-media keeps it",
+       proxy_pool.should_block_media(ns(load_media=True), proxy_in_use=True), False)
+    eq("media: no proxy, nothing metered, nothing blocked",
+       proxy_pool.should_block_media(ns(load_media=False), proxy_in_use=False), False)
+    eq("media: never over CDP",
+       proxy_pool.should_block_media(ns(load_media=False), proxy_in_use=True, over_cdp=True), False)
+    eq("media: the hidden test switch forces it without a proxy",
+       proxy_pool.should_block_media(ns(load_media=False, force_block_media=True), proxy_in_use=False), True)
+
+    class Route:
+        def __init__(self, kind):
+            self.request = ns(resource_type=kind)
+            self.done = None
+
+        def abort(self, reason=None):
+            self.done = ("abort", reason)
+
+        def continue_(self):
+            self.done = ("continue",)
+    for kind, want in (("image", "abort"), ("media", "abort"), ("font", "abort"),
+                       ("document", "continue"), ("script", "continue"),
+                       ("xhr", "continue"), ("fetch", "continue"), ("stylesheet", "continue")):
+        route = Route(kind)
+        proxy_pool.playwright_media_route(route)
+        eq("media: playwright %s -> %s" % (kind, want), route.done[0], want)
+
+    class Sel:
+        def __init__(self):
+            self.sent = []
+
+        def execute_cdp_cmd(self, cmd, params):
+            self.sent.append((cmd, params))
+    sel = Sel()
+    proxy_pool.selenium_block_media(sel)
+    blocked = dict(sel.sent).get("Network.setBlockedURLs", {}).get("urls", [])
+    check("media: selenium blocks images, video and fonts by URL",
+          all(p in blocked for p in ("*.jpg", "*.webp?*", "*.mp4", "*.woff2")) and
+          not any(p.startswith("*.js") or p.startswith("*.css") for p in blocked), blocked)
+
+    import asyncio
+
+    class Client:
+        def __init__(self):
+            self.sent, self.handlers = [], {}
+
+        def on(self, name, fn):
+            self.handlers[name] = fn
+
+        async def send(self, cmd, params=None):
+            self.sent.append((cmd, params))
+
+    client = Client()
+
+    async def create():
+        return client
+    page = ns(target=ns(createCDPSession=create))
+    loop = asyncio.new_event_loop()
+    try:
+        async def drive():
+            await proxy_pool.pyppeteer_block_media(page)
+            client.handlers["Fetch.requestPaused"]({"requestId": "r1", "resourceType": "Image"})
+            await asyncio.sleep(0)
+        loop.run_until_complete(drive())
+    finally:
+        loop.close()
+    patterns = dict(client.sent)["Fetch.enable"]["patterns"]
+    eq("media: pyppeteer pauses only images, media and fonts",
+       sorted(p["resourceType"] for p in patterns), ["Font", "Image", "Media"])
+    eq("media: ...and fails what it paused",
+       client.sent[-1], ("Fetch.failRequest", {"requestId": "r1", "errorReason": "BlockedByClient"}))
+    # Every local-browser engine must consult the policy. A source check,
+    # because the suite runs without a browser binary.
+    for module, call in (("playwright_scraper", "playwright_media_route"),
+                         ("selenium_scraper", "selenium_block_media"),
+                         ("puppeteer_scraper", "pyppeteer_block_media")):
+        source = open(os.path.join(HERE, module + ".py"), encoding="utf-8").read()
+        check("media: %s applies the policy" % module,
+              "should_block_media(" in source and call in source)
+    args = _bridge_args(["--url", "https://www.potterybarn.com/products/x/"])
+    eq("media: --load-media is off by default", args.load_media, False)
+    check("media: --load-media is documented in --help, the test switch is not",
+          "--load-media" in browser_bridge_help() and "--force-block-media" not in browser_bridge_help())
+
+
+def browser_bridge_help():
+    import browser_bridge
+    return browser_bridge.build_parser("t").format_help()
+
+
 def main():
     tests = [v for k, v in sorted(globals().items(), key=lambda kv: 0) if k.startswith("test_") and callable(v)]
     for test in tests:

@@ -547,12 +547,11 @@ def main(argv=None) -> int:
     except Exception as exc:  # noqa: BLE001
         import http_scraper
         if isinstance(exc, http_scraper.ProxyAuthError):
-            print("[!] the proxy refused the credential while reading the "
-                  "category page: %s" % exc, file=sys.stderr)
+            print(http_scraper.proxy_message(exc), file=sys.stderr)
             output_writer.write_failed_attempt(
-                args.out, stop_reason="proxy_auth_failed", mode="category",
-                start_url=args.url, pages_requested=args.pages,
-                transport_error="proxy refused the credential")
+                args.out, stop_reason=proxy_pool.PROXY_PRECHECK_STOP_REASON,
+                mode="category", start_url=args.url, pages_requested=args.pages,
+                transport_error="proxy: %s" % exc)
             return output_writer.EXIT_REMOTE_API_ERROR
         print("run failed: %s: %s" % (type(exc).__name__,
                                       proxy_pool.mask_text(str(exc))), file=sys.stderr)

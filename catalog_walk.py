@@ -107,9 +107,19 @@ def http_fetch(timeout: int, proxy: Optional[str] = None) -> Callable[[str], byt
     def fetch(url: str) -> bytes:
         try:
             response = session.get(url, timeout=timeout)
+        except requests.exceptions.ProxyError as exc:
+            import proxy_pool
+            match = proxy_pool._STATUS_IN_ERROR_RE.search(str(exc))
+            if match:
+                raise proxy_pool.ProxyPrecheckError(int(match.group(1))) from None
+            raise RuntimeError("could not fetch %s: %s: %s" % (
+                url, type(exc).__name__, _mask(str(exc)))) from None
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError("could not fetch %s: %s: %s" % (
                 url, type(exc).__name__, _mask(str(exc)))) from None
+        if response.status_code in (402, 407):
+            import proxy_pool
+            raise proxy_pool.ProxyPrecheckError(response.status_code)
         if response.status_code != 200:
             raise RuntimeError("%s answered HTTP %d" % (url, response.status_code))
         return response.content
@@ -158,6 +168,11 @@ def main(argv=None) -> int:
                         open_box=not args.no_open_box, log=log):
             found.append(url)
     except RuntimeError as exc:
+        import proxy_pool
+        if isinstance(exc, proxy_pool.ProxyPrecheckError):
+            print(proxy_pool.precheck_message(exc, "POTTERYBARN_PROXY", "potterybarn.com",
+                                              browser=False), file=sys.stderr)
+            return 5
         print("[!] %s" % exc, file=sys.stderr)
         return 5 if "could not fetch" in str(exc) else 3
 

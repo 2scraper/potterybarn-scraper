@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -115,8 +116,14 @@ class ProxyAuthError(CurlError):
     credential fails identically. A 407 has also been measured to be
     TRANSIENT on this vendor (homedepot-scraper, 2026-09-22: an hour of 407s,
     then 200 the next day with nothing changed) — "retry later", not
-    "rotate the credential".
+    "rotate the credential". A 402 (traffic/balance exhausted) is the same
+    kind of failure and is raised as this class too, with `.status` 402.
     """
+
+    def __init__(self, message: str = "", status: int = 407):
+        self.status = status if status in proxy_pool.PROXY_PRECHECK_STATUSES else 407
+        super().__init__(message or "HTTP %d: %s" % (
+            self.status, proxy_pool.PROXY_PRECHECK_STATUSES[self.status]))
 
 
 class _Response:
@@ -171,8 +178,10 @@ class CurlSession:
             raise CurlError("curl timed out after %ds" % (timeout + 15)) from None
         if completed.returncode != 0:
             message = _mask_text(completed.stderr.strip()[:300])
-            if completed.returncode in (56, 7) and "407" in message:
-                raise ProxyAuthError(message)
+            if completed.returncode in (56, 7):
+                for code in proxy_pool.PROXY_PRECHECK_STATUSES:
+                    if re.search(r"\b%d\b" % code, message):
+                        raise ProxyAuthError(status=code)
             raise CurlError("curl exited %d: %s" % (completed.returncode, message))
         body, _, trailer = completed.stdout.rpartition("\n")
         parts = trailer.split(" ")
@@ -181,8 +190,8 @@ class CurlSession:
         except (ValueError, IndexError):
             raise CurlError("could not read curl's status line: %r"
                             % trailer[:120]) from None
-        if status == 407:
-            raise ProxyAuthError("the proxy refused the credential (HTTP 407)")
+        if status in proxy_pool.PROXY_PRECHECK_STATUSES:
+            raise ProxyAuthError(status=status)
         final = parts[1] if len(parts) > 1 else url
         redirect = parts[2] if len(parts) > 2 and parts[2] else None
         return _Response(status, body, final, redirect)
@@ -215,8 +224,8 @@ class _RequestsSession:
         current = url
         for _ in range(MAX_REDIRECTS + 1):
             r = self._session.get(current, timeout=timeout, allow_redirects=False)
-            if r.status_code == 407:
-                raise ProxyAuthError("the proxy refused the credential (HTTP 407)")
+            if r.status_code in proxy_pool.PROXY_PRECHECK_STATUSES:
+                raise ProxyAuthError(status=r.status_code)
             location = r.headers.get("location")
             if allow_redirects and 300 <= r.status_code < 400 and location:
                 target = urljoin(current, location)
@@ -228,6 +237,17 @@ class _RequestsSession:
             out.headers = {k.lower(): v for k, v in r.headers.items()}
             return out
         raise CurlError("more than %d redirects from %s" % (MAX_REDIRECTS, url))
+
+
+def proxy_message(exc: "ProxyAuthError") -> str:
+    """The one wording for a gateway 407/402, shared with the browser engines."""
+    text = proxy_pool.precheck_message(
+        proxy_pool.ProxyPrecheckError(exc.status), "POTTERYBARN_PROXY", "potterybarn.com",
+        browser=False)
+    if exc.status == 407:
+        text += ("\n    A 407 has been measured to be transient on this vendor: "
+                 "retry later before replacing anything.")
+    return text
 
 
 def build_session(proxy: Optional[str], client: Optional[str] = None):
@@ -576,11 +596,7 @@ def main(argv=None) -> int:
     try:
         rows, facts = scrape(args)
     except ProxyAuthError as exc:
-        print("[!] the proxy refused the credential: %s\n"
-              "    This is NOT the site blocking the scraper — potterybarn.com "
-              "was never reached.\n    Check POTTERYBARN_PROXY in .env. A 407 "
-              "has been measured to be transient on this vendor: retry later "
-              "before replacing anything." % exc, file=sys.stderr)
+        print(proxy_message(exc), file=sys.stderr)
         try:
             targets = targets_from_args(args)
         except (OSError, ValueError, KeyError):
@@ -589,7 +605,7 @@ def main(argv=None) -> int:
             args.out, stop_reason="proxy_auth_failed", mode="product",
             start_url=targets[0] if targets else None,
             pages_requested=len(targets),
-            transport_error="proxy refused the credential")
+            transport_error="proxy: %s" % exc)
         return output_writer.EXIT_REMOTE_API_ERROR
     except SystemExit:
         raise
