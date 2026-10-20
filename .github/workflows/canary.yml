@@ -108,8 +108,10 @@ jobs:
           POTTERYBARN_PROXY: ${{ secrets.POTTERYBARN_PROXY }}
         run: |
           set +e
+          # --dump-html: a served page that does not parse (2026-10-20: 536 KB,
+          # HTTP 200, classified empty) is only diagnosable from the page itself.
           python http_scraper.py --url https://www.potterybarn.com/products/delaney-marble-end-table/ \
-            --out canary_product --verbose
+            --out canary_product --verbose --dump-html canary_product.html
           # GITHUB_ENV reaches LATER steps only; the check below is this step.
           export product_rc=$?
           echo "product_rc=$product_rc" >> "$GITHUB_ENV"
@@ -141,4 +143,5 @@ jobs:
           path: |
             canary_*.json
             canary_*.csv
+            canary_product_p*.html
           if-no-files-found: ignore

@@ -218,6 +218,33 @@ def product_details(state: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]
     return None
 
 
+def page_shape(html: str) -> Dict[str, Any]:
+    """Key NAMES of a page that did not classify as a product, for the sidecar.
+
+    A served 536 KB product URL classified `empty` on 2026-10-20 and left
+    nothing to tell a changed state shape from a different page. Only key
+    names and sizes are recorded, never values: the state also carries
+    session and A/B data.
+    """
+    text = strip_extension_scripts(html or "")
+    state = initial_state(text)
+    shape: Dict[str, Any] = {
+        "bytes": len(html or ""),
+        "has_state_anchor": _STATE_ANCHOR in text,
+        "state_parsed": state is not None,
+        "state_keys": sorted(state)[:40] if isinstance(state, dict) else None,
+        "product_keys": None,
+        "details_keys": None,
+    }
+    product = state.get("product") if isinstance(state, dict) else None
+    if isinstance(product, dict):
+        shape["product_keys"] = len(product)
+        details = product.get("productDetails")
+        if isinstance(details, dict):
+            shape["details_keys"] = sorted(details)[:40]
+    return shape
+
+
 def detect_page_state(html: str, *, status: Optional[int] = None,
                       url: Optional[str] = None,
                       headers: Optional[Dict[str, str]] = None) -> str:

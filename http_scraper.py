@@ -442,6 +442,10 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
         _dump(args, result.html, index)
         if state != "product":
             facts["failed_pages"].append(index)
+            if result.html:
+                facts.setdefault("unparsed_pages", []).append(
+                    dict(P.page_shape(result.html), page=index, state=state,
+                         status=result.status))
             if state == "transport_error":
                 facts["transport_error"] = True
             elif page_flow.counts_as_blocked(state):
