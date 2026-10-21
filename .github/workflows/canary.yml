@@ -143,7 +143,7 @@ jobs:
         if: always() && env.HAS_PROXY == 'true'
         run: python3 .github/proxy_traffic_summary.py canary_product "live (product)" 10
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: canary-output
