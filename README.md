@@ -490,8 +490,8 @@ wrong page is worse than none, so none ships.
 | `2` | Bad usage, including a URL on another host or one robots.txt disallows |
 | `3` | Blocked: the site refused (a 403, a redirect to the UK store, a 429 from the API) |
 | `4` | Zero products, and the site said so: a listing that states 0 results, or a hub category, which is a correct answer |
-| `5` | Zero products because the content was never obtained: our plumbing (a timeout, a dropped CDP socket, a locked profile, a proxy 407), a page that failed with any other answer, or a served page whose stated rows did not parse (`stop_reason: parser_found_nothing`) |
-| `6` | Partial: some pages or products fetched, then stopped or failed. A failed later page is never `complete` |
+| `5` | Zero products because the content was never obtained: our plumbing (a timeout, a dropped CDP socket, a locked profile, a proxy 407), a page that failed with any other answer, a served page whose stated rows did not parse (`stop_reason: parser_found_nothing`), or a proxy budget spent before any row (`stop_reason: proxy_budget_exceeded`) |
+| `6` | Partial: some pages or products fetched, then stopped or failed (including `stop_reason: proxy_budget_exceeded`). A failed later page is never `complete` |
 
 **`3` and `5` mean different things.** A 407 on the proxy tunnel means
 potterybarn.com was never reached. It is never retried or rotated, because
@@ -526,6 +526,40 @@ the credential".
   `transport_facts.media_blocked`. Measured 2026-10-20 with no proxy and the
   blocking forced on: one sofa listing page through Playwright gave the same
   24 SKUs, every field identical, as the same run without blocking.
+
+### A traffic budget behind a proxy
+
+Every transport counts what it sends through a LOCAL proxy (`--proxy` /
+`--proxy-file` / `POTTERYBARN_PROXY`), and `--proxy-budget-mb` (default `10`;
+`0` = unlimited) caps a run. Once the running total passes it, no further
+product page, retry, API page or sitemap file is requested through the
+proxy, a browser aborts any request it still tries, the rows already read
+are kept, and the run ends with `stop_reason: proxy_budget_exceeded`: exit
+`6` with rows, `5` without. It never goes on silently. A proxied run ends
+with one line such as `Proxy traffic: 3.2 MB of 10 MB budget`, and both
+sidecars record `proxy_bytes`, `proxy_budget_bytes` and
+`proxy_budget_exceeded` (`null` / `null` / `false` when no local proxy was
+used). Nothing is metered over `--cdp-endpoint` or with no proxy.
+`api_scraper.py` is metered only when something goes through the proxy: the
+category page (`--url` with a proxy, unless `--no-page`) or `--api-via-proxy`;
+its default API calls go direct and are not limited. `catalog_walk.py
+--via-proxy` honours the same flag and prints the same line; it writes no
+sidecar.
+
+| Transport | Counted from |
+|---|---|
+| curl (`http_scraper.py`, the category page) | curl's own `size_request` + `size_upload` + `size_header` + `size_download` (`--write-out`), also when curl fails |
+| requests (`http_scraper.py`, `api_scraper.py --api-via-proxy`, `catalog_walk.py --via-proxy`) | request line, headers and body sent; status line, headers and body as received on the wire (compressed) |
+| Playwright | `request.sizes()` of every finished or failed request |
+| pyppeteer | CDP `Network.loadingFinished.encodedDataLength` of every response that came over the network, plus each request's line, headers and body |
+| Selenium | the same CDP events, from Chrome's performance log |
+| the browser pre-check | its `HEAD` response, as for requests |
+
+The count is an estimate of the tunnelled payload, not the proxy's invoice:
+TLS records, the `CONNECT` exchange (except the response headers curl
+reports), WebSocket frames and Chrome's own background requests are not
+visible to it, so the bill is a few per cent higher. A `CONNECT` that
+`requests` sees refused carries no response to count. 1 MB = 1,000,000 bytes.
 
 **The CSV escapes formula-shaped cells.** A text cell beginning `=`, `+`,
 `-`, `@`, a tab or a line break gets a leading apostrophe in the CSV only, so

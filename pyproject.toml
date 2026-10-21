@@ -45,7 +45,7 @@ py-modules = [
     "api_scraper", "browser_bridge", "captcha_solver", "catalog_walk",
     "diff_runs", "env_config", "fingerprint_client", "http_scraper",
     "output_writer", "page_flow", "playwright_scraper", "product_parser",
-    "proxy_pool", "puppeteer_scraper", "selenium_scraper",
+    "proxy_pool", "proxy_meter", "puppeteer_scraper", "selenium_scraper",
 ]
 
 [tool.pytest.ini_options]

@@ -20,6 +20,7 @@ from __future__ import annotations
 import sys
 
 import browser_bridge
+import proxy_meter
 import proxy_pool
 
 # Module level — see playwright_scraper.py.
@@ -65,7 +66,11 @@ class SeleniumDriver:
                       "being given %s with no username or password." % bare,
                       file=sys.stderr)
             options.add_argument("--proxy-server=%s" % bare)
+            # The meter reads Chrome's performance log (--proxy-budget-mb).
+            proxy_meter.selenium_logging_prefs(options)
         self._driver = webdriver.Chrome(options=options)
+        if pool:
+            proxy_meter.current().attach_selenium(self._driver, keep_entries=False)
         self._driver.set_page_load_timeout(self.args.timeout)
         if proxy_pool.should_block_media(self.args, proxy_in_use=bool(pool)):
             # By URL pattern (Selenium has no request events): an image
@@ -75,6 +80,7 @@ class SeleniumDriver:
 
     def navigate(self, url):
         self._driver.get(url)
+        proxy_meter.current().poll_selenium(self._driver)
         return None
 
     def state_json(self):
@@ -84,6 +90,7 @@ class SeleniumDriver:
             "return JSON.stringify(window.__INITIAL_STATE__ || null);")
 
     def content(self):
+        proxy_meter.current().poll_selenium(self._driver)  # the waits re-read the page
         try:
             return self._driver.page_source
         except Exception:
@@ -101,6 +108,7 @@ class SeleniumDriver:
 
     def stop(self):
         if self._driver is not None:
+            proxy_meter.current().poll_selenium(self._driver)  # what the last page still loaded
             try:
                 self._driver.quit()
             except Exception:
