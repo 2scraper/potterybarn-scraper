@@ -59,6 +59,10 @@ behaviour for an existing user is called out at the top of its release.
 - CI only: the whole canary, free and paid jobs alike, now runs weekly (Mondays 06:23 UTC) and on a manual dispatch; the daily schedule is removed.
 - `http_scraper.py`: a product URL that is served but does not classify as a product page now records the page's shape in `transport_facts.unparsed_pages`: size, whether `window.__INITIAL_STATE__` was found and parsed, its top-level key names, and the `productDetails` key names. Values are not recorded. On 2026-10-20 the canary's product page came back through `POTTERYBARN_PROXY` as 536 KB with HTTP 200, was classified `empty` (exit 5), and nothing in the sidecar or the artefact could tell a changed page shape from a different page. The canary now also uploads that page (`--dump-html`). Exit codes are unchanged.
 
+### Fixed
+
+- Proxy traffic meter: Selenium and Puppeteer no longer count requests that never leave the browser. Chrome's new-tab page loads `chrome://` scripts (about 2.8 MB, seen through a stub proxy) that were reported as finished loads and added to `proxy_bytes`, enough to bring a run noticeably closer to `--proxy-budget-mb`. Only `http(s)` requests and responses are counted now.
+
 ## [1.1.0] — 2026-10-16
 
 > **Behaviour changes.**
