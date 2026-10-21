@@ -111,6 +111,16 @@ jobs:
         run: .venv/bin/python smoke_test.py
       - name: The ${{ matrix.engine }} CLI answers --help
         run: .venv/bin/python ${{ matrix.engine }}_scraper.py --help > /dev/null
+      # The proxy meter against a stub proxy in a real browser (Playwright's
+      # own Chromium; pyppeteer and Selenium use the runner's Chrome). A
+      # missing browser fails this step instead of skipping.
+      - name: Install Chromium for the proxy-meter test (Playwright only)
+        if: matrix.engine == 'playwright'
+        run: .venv/bin/python -m playwright install --with-deps chromium
+      - name: Proxy meter against a stub proxy, in a real ${{ matrix.engine }} browser
+        run: |
+          PROXY_METER_REQUIRE=${{ matrix.engine == 'puppeteer' && 'pyppeteer' || matrix.engine }} \
+            .venv/bin/python -m unittest -v tests.test_proxy_meter
 
   docker:
     runs-on: ubuntu-latest

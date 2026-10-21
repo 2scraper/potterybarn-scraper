@@ -25,6 +25,7 @@ import asyncio
 import sys
 
 import browser_bridge
+import proxy_meter
 import proxy_pool
 
 # Module level — see playwright_scraper.py.
@@ -89,6 +90,8 @@ class PuppeteerDriver:
         if proxy_pool.should_block_media(self.args, proxy_in_use=bool(pool)):
             self._run(proxy_pool.pyppeteer_block_media(self._page))
             self.media_blocked = True
+        if pool:
+            self._run(proxy_meter.current().attach_pyppeteer(self._page))  # --proxy-budget-mb
 
     def navigate(self, url):
         # pyppeteer has no `commit` wait; DOMContentLoaded is the earliest.

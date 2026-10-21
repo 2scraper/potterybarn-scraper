@@ -111,7 +111,7 @@ jobs:
           # --dump-html: a served page that does not parse (2026-10-20: 536 KB,
           # HTTP 200, classified empty) is only diagnosable from the page itself.
           python http_scraper.py --url https://www.potterybarn.com/products/delaney-marble-end-table/ \
-            --out canary_product --verbose --dump-html canary_product.html
+            --out canary_product --verbose --dump-html canary_product.html --proxy-budget-mb 10
           # GITHUB_ENV reaches LATER steps only; the check below is this step.
           export product_rc=$?
           echo "product_rc=$product_rc" >> "$GITHUB_ENV"
@@ -135,6 +135,13 @@ jobs:
               print("::error::SKU count did not close: %r" % check); sys.exit(1)
           print("product canary OK:", check)
           PY
+
+      # What the product run sent through POTTERYBARN_PROXY, read from its
+      # sidecar; red when it stopped at the 10 MB budget (stop_reason
+      # proxy_budget_exceeded). The listing step above uses no proxy.
+      - name: Proxy traffic
+        if: always() && env.HAS_PROXY == 'true'
+        run: python3 .github/proxy_traffic_summary.py canary_product "live (product)" 10
 
       - uses: actions/upload-artifact@v6
         if: always()

@@ -58,6 +58,7 @@ from urllib.parse import urljoin, urlparse
 import env_config
 import output_writer
 import page_flow
+import proxy_meter
 import product_parser as P
 import proxy_pool
 from output_writer import SkuRow, finish_run
@@ -167,7 +168,11 @@ class CurlSession:
             # answer, and every measurement here was HTTP/2.
             "--http2", "--compressed",
             "--max-time", str(timeout),
-            "--write-out", "\n%{http_code} %{url_effective} %{redirect_url}",
+            # The four sizes feed --proxy-budget-mb: request headers, request
+            # body, every response header block (CONNECT too), and the body as
+            # downloaded (compressed).
+            "--write-out", "\n%{http_code} %{size_request} %{size_upload} %{size_header} "
+                           "%{size_download} %{url_effective} %{redirect_url}",
             "--config", "-",
         ] + header_args + [url]
         config = "proxy = \"%s\"\n" % self.proxy if self.proxy else ""
@@ -177,6 +182,11 @@ class CurlSession:
         except subprocess.TimeoutExpired:
             raise CurlError("curl timed out after %ds" % (timeout + 15)) from None
         if completed.returncode != 0:
+            # curl still prints --write-out on a failure (a refused CONNECT,
+            # a timeout): what it did exchange counts too.
+            failed_sizes = completed.stdout.rpartition("\n")[2].split(" ")[1:5]
+            if self.proxy and len(failed_sizes) == 4 and all(n.isdigit() for n in failed_sizes):
+                proxy_meter.current().add(sum(int(n) for n in failed_sizes))
             message = _mask_text(completed.stderr.strip()[:300])
             if completed.returncode in (56, 7):
                 for code in proxy_pool.PROXY_PRECHECK_STATUSES:
@@ -187,13 +197,18 @@ class CurlSession:
         parts = trailer.split(" ")
         try:
             status = int(parts[0])
+            sizes = [int(n) for n in parts[1:5]]
+            if len(sizes) != 4:
+                raise ValueError(trailer)
         except (ValueError, IndexError):
             raise CurlError("could not read curl's status line: %r"
                             % trailer[:120]) from None
+        if self.proxy:
+            proxy_meter.current().add(sum(sizes))
         if status in proxy_pool.PROXY_PRECHECK_STATUSES:
             raise ProxyAuthError(status=status)
-        final = parts[1] if len(parts) > 1 else url
-        redirect = parts[2] if len(parts) > 2 and parts[2] else None
+        final = parts[5] if len(parts) > 5 else url
+        redirect = parts[6] if len(parts) > 6 and parts[6] else None
         return _Response(status, body, final, redirect)
 
     def get(self, url: str, timeout: int = 60, allow_redirects: bool = True):
@@ -219,6 +234,9 @@ class _RequestsSession:
         self._session.headers.update(BROWSER_HEADERS)
         if proxy:
             self._session.proxies.update({"http": proxy, "https": proxy})
+            # Every response through the proxy counts toward --proxy-budget-mb.
+            self._session.hooks["response"].append(
+                lambda response, *a, **k: proxy_meter.current().requests_hook(response))
 
     def get(self, url: str, timeout: int = 60, allow_redirects: bool = True):
         current = url
@@ -300,6 +318,10 @@ def fetch(session, url: str, timeout: int, *, retries: int = 2,
     attempts = max(1, retries + 1)
     exit_label = None
     for attempt in range(1, attempts + 1):
+        if proxy_meter.exceeded():
+            # --proxy-budget-mb: no further request through the proxy.
+            return (last or FetchResult(url, error=proxy_meter.STOP_REASON, attempts=attempt - 1,
+                                        exit_used=exit_label)), session
         try:
             response = session.get(url, timeout=timeout, allow_redirects=True)
         except ProxyAuthError:
@@ -407,6 +429,7 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
 
     pool = proxy_pool.from_args(args)
     proxy = pool.current if pool else None
+    proxy_meter.start(getattr(args, "proxy_budget_mb", proxy_meter.DEFAULT_BUDGET_MB), active=bool(proxy))
     if not proxy:
         print("WARNING: no proxy configured. Measured 2026-09-23, a non-US "
               "address gets the branded 403 on every product page. Set "
@@ -433,6 +456,10 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
     rows: List[SkuRow] = []
     seen: set = set()
     for index, url in enumerate(targets, 1):
+        if proxy_meter.exceeded():
+            # --proxy-budget-mb: no further product page through the proxy.
+            facts["unattempted_pages"] = list(range(index, len(targets) + 1))
+            break
         log("product %d/%d: %s" % (index, len(targets), url))
         result, session = fetch(session, url, args.timeout, retries=args.retries,
                                 retry_delay=args.retry_delay, log=log,
@@ -577,6 +604,7 @@ def parse_args(argv=None):
     p.add_argument("--proxy-block-retries", type=_non_negative_int, default=3,
                    help="How many times a refused page may move to a "
                         "different exit before it is reported.")
+    proxy_meter.add_budget_argument(p)
     args = p.parse_args(argv)
     env_config.apply(args, keys={k: v for k, v in env_config.ENV_KEYS.items()
                                  if v != "url"})

@@ -70,6 +70,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import env_config
 import output_writer
 import product_parser as P
+import proxy_meter
 import proxy_pool
 from output_writer import Product, finish_run
 
@@ -151,6 +152,8 @@ def browse(session, group_id: str, key: str, page: int, *,
     except Exception as exc:  # noqa: BLE001
         return ApiResult(error="%s: %s" % (type(exc).__name__, _redact(exc, key)),
                          elapsed_ms=int((time.time() - started) * 1000))
+    if proxies:
+        proxy_meter.current().count_requests_response(response)  # --api-via-proxy
     try:
         payload = response.json()
     except ValueError:
@@ -263,8 +266,12 @@ def sweep(args, session, group_id, key, currency, label, pages, proxies,
     in a re-sorted pass most pages hold only products already seen.
     """
     for page in range(1, pages + 1):
+        if proxy_meter.exceeded():
+            break  # --proxy-budget-mb: no further page through the proxy
         result = None
         for attempt in range(1, args.retries + 2):
+            if attempt > 1 and proxy_meter.exceeded():
+                break  # no retry through the proxy either
             result = browse(session, group_id, key, page, timeout=args.timeout,
                             proxies=proxies, sort=sort)
             if result.state not in ("rate_limited", "transport_error"):
@@ -332,6 +339,12 @@ def scrape(args) -> Tuple[List[Product], Dict[str, Any]]:
     if requests is None:
         raise output_writer.UsageError("api_scraper.py needs `requests`: pip install -r requirements.txt")
     log = (lambda m: print(m, file=sys.stderr)) if args.verbose else (lambda m: None)
+    # Metered when something actually goes through the local proxy: the
+    # category page (--url with a proxy, unless --no-page) or the API calls
+    # (--api-via-proxy). The API alone goes direct and is not metered.
+    pool = proxy_pool.from_args(args)
+    proxy_meter.start(getattr(args, "proxy_budget_mb", proxy_meter.DEFAULT_BUDGET_MB),
+                      active=bool(pool) and (bool(args.url and not args.no_page) or bool(args.api_via_proxy)))
     context = resolve_listing(args, log)
     group_id, key, currency = context["group_id"], context["key"], context["currency"]
     label = args.category or (P.category_from_url(args.url) if args.url else group_id)
@@ -382,7 +395,7 @@ def scrape(args) -> Tuple[List[Product], Dict[str, Any]]:
     facts["second_sweep_recovered"] = None
     if (args.all_pages and total is not None and len(rows) < total
             and not facts["blocked"] and not facts["transport_error"]
-            and not facts["max_products_reached"]):
+            and not facts["max_products_reached"] and not proxy_meter.exceeded()):
         # Measured 2026-09-24: one sweep of `sofa` returned 434 results but
         # only 415 distinct products — 19 repeated on a second page, so 19
         # others were never returned — and minutes later five sweeps in a
@@ -513,6 +526,7 @@ def parse_args(argv=None):
     p.add_argument("--proxy-shuffle", action="store_true")
     p.add_argument("--proxy-sessions", type=_positive_int, default=None)
     p.add_argument("--proxy-block-retries", type=_non_negative_int, default=3)
+    proxy_meter.add_budget_argument(p)
     args = p.parse_args(argv)
     # POTTERYBARN_URL is documented as the page a BROWSER engine fetches — in
     # practice a product page. Applied blindly here it hijacked a typed

@@ -96,6 +96,10 @@ def walk(fetch: Callable[[str], bytes], index_url: str, *,
                 return
 
 
+class BudgetExceeded(RuntimeError):
+    """--proxy-budget-mb is spent: no further sitemap file is fetched."""
+
+
 def http_fetch(timeout: int, proxy: Optional[str] = None) -> Callable[[str], bytes]:
     import requests
     import http_scraper
@@ -103,8 +107,15 @@ def http_fetch(timeout: int, proxy: Optional[str] = None) -> Callable[[str], byt
     session.headers.update(http_scraper.BROWSER_HEADERS)
     if proxy:
         session.proxies.update({"http": proxy, "https": proxy})
+        import proxy_meter
+        # Every response through the proxy counts toward --proxy-budget-mb.
+        session.hooks["response"].append(
+            lambda response, *a, **k: proxy_meter.current().requests_hook(response))
 
     def fetch(url: str) -> bytes:
+        import proxy_meter
+        if proxy_meter.exceeded():
+            raise BudgetExceeded(proxy_meter.STOP_REASON)
         try:
             response = session.get(url, timeout=timeout)
         except requests.exceptions.ProxyError as exc:
@@ -147,6 +158,8 @@ def main(argv=None) -> int:
                         help="Fetch through POTTERYBARN_PROXY. Not needed from "
                              "the addresses measured.")
     parser.add_argument("--verbose", action="store_true")
+    import proxy_meter
+    proxy_meter.add_budget_argument(parser)
     args = parser.parse_args(argv)
 
     proxy = None
@@ -159,14 +172,19 @@ def main(argv=None) -> int:
             print("--via-proxy needs POTTERYBARN_PROXY", file=sys.stderr)
             return 2
 
+    proxy_meter.start(args.proxy_budget_mb, active=bool(proxy))
     log = (lambda m: print(m, file=sys.stderr)) if args.verbose else (lambda m: None)
     index = SHOP_INDEX if args.kind == "categories" else PRODUCT_INDEX
     found: List[str] = []
+    found_rc = None
     try:
         for url in walk(http_fetch(args.timeout, proxy), index, grep=args.grep,
                         limit=args.limit, leaf_only=args.leaf_only,
                         open_box=not args.no_open_box, log=log):
             found.append(url)
+    except BudgetExceeded:
+        # The URLs found so far are kept: 6 with some, 5 with none.
+        found_rc = 6 if found else 5
     except RuntimeError as exc:
         import proxy_pool
         if isinstance(exc, proxy_pool.ProxyPrecheckError):
@@ -183,6 +201,11 @@ def main(argv=None) -> int:
     else:
         for url in found:
             print(url)
+    proxy_meter.report()
+    if found_rc is not None:
+        print("[!] stopped: the proxy budget (--proxy-budget-mb) is spent; %d target(s) found so far."
+              % len(found), file=sys.stderr)
+        return found_rc
     return 0 if found else 4
 
 

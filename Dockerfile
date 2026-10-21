@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-playwright.tx
 COPY api_scraper.py browser_bridge.py captcha_solver.py catalog_walk.py \
      diff_runs.py env_config.py fingerprint_client.py http_scraper.py \
      output_writer.py page_flow.py playwright_scraper.py product_parser.py \
-     proxy_pool.py ./
+     proxy_pool.py proxy_meter.py ./
 
 # Not root. Playwright's browsers were installed above into the shared cache
 # under /ms-playwright, so the unprivileged user can launch them.

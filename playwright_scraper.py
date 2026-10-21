@@ -17,6 +17,7 @@ from __future__ import annotations
 import sys
 
 import browser_bridge
+import proxy_meter
 import proxy_pool
 
 # Module level on purpose: the offline suite skips this engine when
@@ -71,6 +72,11 @@ class PlaywrightDriver:
             if proxy_pool.should_block_media(self.args, proxy_in_use=bool(pool)):
                 self._context.route("**/*", proxy_pool.playwright_media_route)
                 self.media_blocked = True
+            if pool:
+                # Counted for --proxy-budget-mb; registered after the media
+                # route, so it is asked first and aborts everything once the
+                # budget is spent.
+                proxy_meter.current().attach_playwright(self._context)
         self._page = self._context.new_page()
         self._page.set_default_timeout(self.args.timeout * 1000)
         if self.over_cdp:
