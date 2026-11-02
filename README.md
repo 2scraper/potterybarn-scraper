@@ -1,4 +1,6 @@
-# potterybarn-scraper
+# Pottery Barn Scraper — Product Prices, SKUs and Stock in Python
+
+**Pottery Barn scraper** — an open-source (MIT) Python tool that reads Pottery Barn (US) category listings and product pages, and writes every product in a category with its price range, or every SKU of a product with its own price, markdown, stock state and options, to JSON or CSV. As measured on 2026-09-24, the category listing comes from the site's own listing API and needs no proxy, browser or key, while product pages need a US exit, `curl` and the browser header set. Use it to monitor prices and markdowns across a category, or compare two runs of the same mode with `diff_runs.py`.
 
 Scrapes Pottery Barn (US) category listings and product pages: every product
 in a category with its price range, and every SKU of a product with its own
@@ -659,6 +661,22 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md), organised by symptom.
   remote browser brings its own.
 
 ---
+
+## Guides
+
+- [How to run the 2scraper scrapers: setup, proxies, exit codes and access modes](https://2captcha.com/h/how-to-run-2scraper-open-source-scrapers) — installation, `.env`, `.meta.json` for the whole family.
+
+## Related scrapers
+
+Same CLI conventions, same output contract (one row per item, JSON or CSV, a `.meta.json` sidecar and shared exit codes):
+
+- [Rakuten Ichiba scraper](https://github.com/2scraper/rakuten-scraper) — Japan's largest marketplace
+- [SHEIN scraper](https://github.com/2scraper/shein-scraper) — us.shein.com search, category and product pages…
+- [Sleep Number scraper](https://github.com/2scraper/sleepnumber-scraper) — Smart beds, mattresses and bedding from sleepnumber.com
+- [StockX scraper](https://github.com/2scraper/stockx-scraper) — Search results, category listings and product pages
+- [TikTok Shop scraper](https://github.com/2scraper/tiktok-shop-scraper) — Product pages to 39 columns
+
+All scrapers: [github.com/2scraper](https://github.com/2scraper) · Need another site? [Open a request](https://github.com/2scraper/.github/issues/new?title=%5BScraper%20request%5D%20)
 
 ## Contributing, security, licence
 
