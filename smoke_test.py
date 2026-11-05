@@ -1360,6 +1360,16 @@ def test_no_private_citations():
     check("...and leaves an RFC section alone", not private_citations("RFC 9309 " + "\u00a7" + "2.2.2"))
 
 
+_RELATED_SECTION = re.compile(r"^## Related scrapers[ \t]*\n.*?(?=^## |\Z)", re.M | re.S)
+
+
+def _without_related_section(text):
+    """The README's `## Related scrapers` section, up to the next `## `
+    heading, links to and describes OTHER repositories by name; the drift
+    check is about this repository's own text, so only that section is cut."""
+    return _RELATED_SECTION.sub("", text)
+
+
 def test_banned_wordings_and_sibling_drift():
     for rel in _shipped_text_files():
         text = open(os.path.join(HERE, rel), encoding="utf-8").read()
@@ -1369,8 +1379,16 @@ def test_banned_wordings_and_sibling_drift():
         if rel == "smoke_test.py":
             # It names the sibling words it hunts for.
             continue
+        if rel == "README.md":
+            low = _without_related_section(text).lower()
         for phrase in SIBLING_DRIFT:
             check("%s carries no sibling text %r" % (rel, phrase), phrase.lower() not in low)
+    sample = ("## Usage\nx\n## Related scrapers\n\n- [A](u) - " + SIBLING_DRIFT[0] +
+              "\n\n## Legal\n" + SIBLING_DRIFT[1] + "\n")
+    cut = _without_related_section(sample)
+    check("the drift check cuts only the Related section",
+          SIBLING_DRIFT[0] not in cut and SIBLING_DRIFT[1] in cut and "## Legal" in cut
+          and "## Usage" in cut)
 
 
 # ---------------------------------------------------------------------------
@@ -2253,6 +2271,270 @@ def test_canary_reports_proxy_traffic():
               proc.returncode == 0 and last == "**%s**: proxy traffic 2.0 MB of 10 MB" % 'live (product)', (proc.stderr, last))
         proc, last = summarise()
         check("canary summary: no sidecar is reported, not a crash", proc.returncode == 0 and "not recorded" in last)
+
+
+# ---------------------------------------------------------------------------
+# 2Captcha fingerprint (Playwright, local browser only)
+# ---------------------------------------------------------------------------
+
+def _fp_fixture():
+    with open(os.path.join(FIXTURES, "fingerprint_chromium.json"), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def test_fingerprint_fields_come_from_where_a_real_response_keeps_them():
+    """Read off a real response: the docs' abridged examples put the UA at
+    userAgent.value and WebGL at webgl.vendor, and a real response has
+    neither — a client written from the examples applies nothing."""
+    import fingerprint_client as F
+    fp = _fp_fixture()
+    eq("fingerprint: every applied field is found in a real response", F.missing_fields(fp), [])
+    kw = F.playwright_context_kwargs(fp)
+    eq("fingerprint: user agent from userAgent.userAgent", kw.get("user_agent"),
+       fp["userAgent"]["userAgent"])
+    eq("fingerprint: the response's own locale, not one built from the country",
+       kw.get("locale"), "de-DE")
+    eq("fingerprint: timezone from intl.timeZone", kw.get("timezone_id"), "Europe/Berlin")
+    eq("fingerprint: screen", kw.get("screen"), {"width": 1366, "height": 768})
+    eq("fingerprint: the viewport is the stated outer window, not the screen",
+       kw.get("viewport"), {"width": 1366, "height": 648})
+    eq("fingerprint: device scale factor", kw.get("device_scale_factor"), 1.25)
+    script = F.playwright_init_script(fp)
+    check("fingerprint: WebGL vendor from glParameters[37445]",
+          json.dumps(fp["webgl"]["glParameters"]["37445"]) in script)
+    check("fingerprint: WebGL renderer from glParameters[37446]",
+          json.dumps(fp["webgl"]["glParameters"]["37446"]) in script)
+    o = F.user_agent_override(fp)
+    check("fingerprint: client hints are built", o is not None)
+    eq("fingerprint: the override carries the same UA", o["userAgent"], fp["userAgent"]["userAgent"])
+    eq("fingerprint: hint brands", [b["brand"] for b in o["userAgentMetadata"]["brands"]],
+       ["Not;A=Brand", "Chromium", "Google Chrome"])
+    eq("fingerprint: hint platform", o["userAgentMetadata"]["platform"], "Windows")
+    eq("fingerprint: hint full version", o["userAgentMetadata"]["fullVersion"], "150.0.7871.47")
+    eq("fingerprint: Accept-Language from intl.languages", o["acceptLanguage"], "de-DE,de,en-US,en")
+    eq("fingerprint: navigator.platform", o["platform"], "Win32")
+    eq("fingerprint: no hints without hint metadata",
+       F.user_agent_override({"userAgent": {"userAgent": "Mozilla/5.0 x"}}), None)
+    # The read-back comparison: equal values pass, a changed one is named.
+    seen = {"userAgent": kw["user_agent"], "platform": "Win32", "language": "de-DE",
+            "timeZone": "Europe/Berlin", "hardwareConcurrency": 20, "deviceMemory": 16,
+            "uaDataPlatform": "Windows", "screen": [1366, 768],
+            "uaDataBrands": ["Not;A=Brand/8", "Chromium/150", "Google Chrome/150"]}
+    eq("fingerprint: a page reporting the fingerprint has no mismatch",
+       F.readback_mismatches(fp, seen), [])
+    seen["uaDataBrands"] = ["Chromium/156"]
+    mism = F.readback_mismatches(fp, seen)
+    check("fingerprint: real client hints under a fingerprint UA are a mismatch",
+          len(mism) == 1 and mism[0].startswith("uaDataBrands"), "(got %r)" % mism)
+
+
+class _FakeFpResp:
+    def __init__(self, status, body):
+        self.status_code = status
+        self._body = body
+        self.text = json.dumps(body)
+
+    def json(self):
+        return self._body
+
+
+def test_fingerprint_refusal_is_named_and_never_cached_or_leaked():
+    """HOME is pointed at an empty directory, so a fingerprint cached by an
+    earlier real run cannot answer instead of the refusal under test."""
+    import fingerprint_client as F
+    import requests
+    key = "0123456789abcdef" * 2
+    calls = []
+    saved_get, saved_home = F.requests.get, os.environ.get("HOME")
+    with tempfile.TemporaryDirectory() as home:
+        os.environ["HOME"] = home
+        try:
+            def refuse(url, params=None, timeout=None):
+                calls.append(params)
+                return _FakeFpResp(403, {"errorId": 2002, "errorCode": "ERROR_FINGERPRINT_PLAN_REQUIRED",
+                                         "errorDescription": "No active fingerprint plan is assigned to this account."})
+            F.requests.get = refuse
+            check("fingerprint: the cache lives under the CURRENT home", F.default_cache_dir().startswith(home))
+            try:
+                F.get_fingerprint(key, tags="Windows", country="us")
+                check("fingerprint: a 403 raises", False)
+            except F.FingerprintError as exc:
+                check("fingerprint: the refusal names the API's error code",
+                      "ERROR_FINGERPRINT_PLAN_REQUIRED" in str(exc), "(got %r)" % str(exc))
+                check("fingerprint: the refusal never carries the key", key not in str(exc))
+            eq("fingerprint: the request went out (no cache answered)", len(calls), 1)
+            eq("fingerprint: one tag and the country were sent",
+               (calls[0].get("tags"), calls[0].get("country")), ("Windows", "us"))
+            check("fingerprint: nothing was cached from a refusal", not os.path.exists(F.default_cache_dir()))
+
+            def explode(url, params=None, timeout=None):
+                raise requests.ConnectionError("HTTPSConnectionPool: /fingerprint/random?format=chromium&key=%s" % key)
+            F.requests.get = explode
+            try:
+                F.get_fingerprint(key, cache_dir=None)
+            except F.FingerprintError as exc:
+                check("fingerprint: a connection error is redacted", key not in str(exc) and "key=***" in str(exc))
+            try:
+                F.get_fingerprint(key, tags="Windows,Chrome", cache_dir=None)
+                check("fingerprint: a tag list is refused before it is billed", False)
+            except F.FingerprintError:
+                check("fingerprint: a tag list is refused before it is billed", True)
+
+            F.requests.get = lambda url, params=None, timeout=None: _FakeFpResp(200, _fp_fixture())
+            fp = F.get_fingerprint(key, tags="Windows", country="de")
+            F.requests.get = explode
+            again = F.get_fingerprint(key, tags="Windows", country="de")
+            eq("fingerprint: a second run with the same flags is served from the cache",
+               again.get("id"), fp.get("id"))
+            F.requests.get = lambda url, params=None, timeout=None: _FakeFpResp(200, {"id": 1})
+            try:
+                F.get_fingerprint(key, cache_dir=None)
+                check("fingerprint: a 200 with no user agent is an error", False)
+            except F.FingerprintError:
+                check("fingerprint: a 200 with no user agent is an error", True)
+        finally:
+            F.requests.get = saved_get
+            if saved_home is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = saved_home
+
+
+def test_fingerprint_flags_never_stack_on_the_scraping_browser():
+    import browser_bridge
+    import env_config
+    import fingerprint_client as F
+    saved = {k: os.environ.get(k) for k in env_config.ENV_KEYS}
+    for k in env_config.ENV_KEYS:
+        os.environ[k] = ""
+    cdp = "ws://" + "EXAMPLE-LOGIN" + ":" + "EXAMPLE-PASS" + "@cb.2captcha.com:9222"
+    proxy = "http://" + "EXAMPLE-LOGIN" + ":" + "EXAMPLE-PASS" + "@proxy.example:8080"
+    url = ["--url", "https://www.potterybarn.com/products/delaney-marble-end-table/"]
+    key = ["--twocaptcha-key", "EXAMPLE-KEY"]
+
+    def parser():
+        p = browser_bridge.build_parser("x")
+        F.add_arguments(p)
+        return p
+    try:
+        a, _ = quiet(browser_bridge.parse_args, parser(), url + ["--fingerprint"] + key)
+        check("--fingerprint parses", a.fingerprint and a.cdp_endpoint is None)
+        eq("--fp-tags defaults to one tag", a.fp_tags, "Windows")
+        for argv, why in ((["--fingerprint", "--cdp-endpoint", cdp] + key, "a typed --cdp-endpoint"),
+                          (["--fingerprint"], "no TWOCAPTCHA_KEY")):
+            try:
+                quiet(browser_bridge.parse_args, parser(), url + argv)
+                check("--fingerprint refused with %s" % why, False)
+            except SystemExit as exc:
+                eq("--fingerprint refused with %s (exit 2)" % why, exc.code, 2)
+        os.environ["POTTERYBARN_CDP_ENDPOINT"] = cdp
+        os.environ["POTTERYBARN_PROXY"] = proxy
+        b, _ = quiet(browser_bridge.parse_args, parser(), url + ["--fingerprint"] + key)
+        eq("--fingerprint: an endpoint from the environment is dropped for the run", b.cdp_endpoint, None)
+        eq("...before the proxy check, so the local browser keeps the proxy", b.proxy, proxy)
+        c, _ = quiet(browser_bridge.parse_args, parser(), url)
+        eq("without --fingerprint the environment's endpoint is used", c.cdp_endpoint, cdp)
+        os.environ["POTTERYBARN_CDP_ENDPOINT"] = ""
+        os.environ["POTTERYBARN_PROXY"] = ""
+        try:
+            quiet(browser_bridge.parse_args, browser_bridge.build_parser("x"),
+                  url + ["--fingerprint"] + key)
+            check("an engine without the flags refuses --fingerprint", False)
+        except SystemExit as exc:
+            eq("an engine without the flags refuses --fingerprint (exit 2)", exc.code, 2)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def test_fingerprint_facts_reach_the_run_metadata():
+    import browser_bridge
+    doc = "<html><body><pre>%s</pre></body></html>" % json.dumps(_browse_payload([], 0))
+    drv = StubDriver([doc])
+    drv.fingerprint_facts = {"id": 5573997, "client_hints": True, "mismatches": []}
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "o")
+        quiet(browser_bridge.run, _bridge_args(
+            ["--mode", "category", "--group-id", "sofa", "--pages", "1", "--delay", "0",
+             "--allow-empty", "--out", out]), drv)
+        with open(out + ".meta.json", encoding="utf-8") as fh:
+            meta = json.load(fh)
+    eq("the fingerprint applied is recorded in the run metadata",
+       (meta.get("transport_facts") or {}).get("fingerprint", {}).get("id"), 5573997)
+
+
+def test_fingerprint_is_applied_to_a_real_local_chromium():
+    """Launches the installed Chromium with the fixture fingerprint against
+    a loopback server, and reads back what the page and the request headers
+    report. Skipped where Playwright or its Chromium is not installed."""
+    try:
+        import playwright_scraper
+        from playwright.sync_api import sync_playwright  # noqa: F401
+    except Exception:
+        SKIPS.append("fingerprint on a real Chromium (playwright absent)")
+        return
+    import http.server
+    import threading
+    import browser_bridge
+    import fingerprint_client as F
+    seen_headers = {}
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen_headers.update({k.lower(): v for k, v in self.headers.items()})
+            body = b"<html><body>ok</body></html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            # Ask for the full hint set, as a site that uses them would.
+            self.send_header("Accept-CH", "Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = "http://127.0.0.1:%d/" % srv.server_port
+    fp = _fp_fixture()
+    p = browser_bridge.build_parser("x")
+    F.add_arguments(p)
+    # parse_args of argparse itself: no .env is read into this test.
+    args = p.parse_args(["--fingerprint", "--twocaptcha-key", "unused", "--fp-country", "de",
+                         "--solve-captcha", "never", "--timeout", "30"])
+    drv = playwright_scraper.PlaywrightDriver(args)
+    saved_get = F.get_fingerprint
+    F.get_fingerprint = lambda *a, **k: fp
+    try:
+        try:
+            quiet(drv.start)
+        except Exception as exc:  # noqa: BLE001
+            SKIPS.append("fingerprint on a real Chromium (cannot launch: %s)"
+                         % str(exc).splitlines()[0][:80])
+            return
+        drv.navigate(url)
+        drv.navigate(url)   # the second request carries the hints asked for by Accept-CH
+        facts = drv.fingerprint_facts
+        eq("live: the page reports every checked fingerprint field", facts["mismatches"], [])
+        check("live: client hints were set", facts["client_hints"])
+        eq("live: User-Agent header", seen_headers.get("user-agent"), fp["userAgent"]["userAgent"])
+        check("live: Sec-CH-UA names the fingerprint's Chrome",
+              '"Google Chrome";v="150"' in seen_headers.get("sec-ch-ua", ""), "(got %r)" % seen_headers.get("sec-ch-ua"))
+        eq("live: Sec-CH-UA-Platform", seen_headers.get("sec-ch-ua-platform"), '"Windows"')
+        check("live: Accept-Language from the fingerprint",
+              seen_headers.get("accept-language", "").startswith("de-DE"), "(got %r)" % seen_headers.get("accept-language"))
+        gl = drv._page.evaluate("""() => { const c = document.createElement('canvas').getContext('webgl');
+            return c ? c.getParameter(37446) : null; }""")
+        check("live: WebGL renderer string (or no WebGL in this headless build)",
+              gl in (None, fp["webgl"]["glParameters"]["37446"]), "(got %r)" % gl)
+    finally:
+        F.get_fingerprint = saved_get
+        quiet(drv.stop)
+        srv.shutdown()
 
 
 def browser_bridge_help():

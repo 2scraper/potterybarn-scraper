@@ -352,8 +352,17 @@ def run(args, driver) -> int:
         print("could not start %s: %s: %s"
               % (driver.name, type(exc).__name__, mask_text(str(exc))),
               file=sys.stderr)
+        # A start can fail after the browser is up (a refused fingerprint
+        # fetch comes after the launch): close what was opened.
+        try:
+            driver.stop()
+        except Exception:  # noqa: BLE001
+            pass
         return EXIT_REMOTE_API_ERROR
     facts["over_cdp"] = bool(getattr(driver, "over_cdp", False))
+    if getattr(driver, "fingerprint_facts", None) is not None:
+        # The same dict the driver fills in after the first page.
+        facts["fingerprint"] = driver.fingerprint_facts
     facts["media_blocked"] = bool(getattr(driver, "media_blocked", False))
     if not facts["over_cdp"]:
         print("[!] a LOCAL browser was measured refused on this site's product "
@@ -589,7 +598,24 @@ def build_parser(description: str):
 
 def parse_args(parser, argv=None):
     args = parser.parse_args(argv)
+    typed_cdp = args.cdp_endpoint
     env_config.apply(args)
+    if getattr(args, "fingerprint", False):
+        # A fingerprint is for a browser launched HERE; never stacked on the
+        # Scraping Browser, which brings its own. Checked before the proxy
+        # line below, so an endpoint dropped here does not drop the proxy.
+        if typed_cdp:
+            parser.error("--fingerprint applies to a locally launched browser and "
+                         "cannot be combined with --cdp-endpoint: the Scraping "
+                         "Browser API brings its own fingerprint.")
+        if args.cdp_endpoint:
+            print("[i] --fingerprint: ignoring POTTERYBARN_CDP_ENDPOINT from the "
+                  "environment and launching a local browser.", file=sys.stderr)
+            args.cdp_endpoint = None
+        if not args.twocaptcha_key:
+            parser.error("--fingerprint needs TWOCAPTCHA_KEY (in .env or the "
+                         "environment): the Fingerprint API uses that key, on a "
+                         "separate subscription.")
     if args.cdp_endpoint and args.proxy:
         print("[!] --proxy is ignored with --cdp-endpoint: the remote browser "
               "brings its own exit.", file=sys.stderr)

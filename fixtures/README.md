@@ -1,6 +1,7 @@
 # Fixtures
 
-Every file here was cut from a real capture made on 2026-09-23/24. Which ones
+Every file here was cut from a real capture made on 2026-09-23/24, except
+`fingerprint_chromium.json` (2026-09-30). Which ones
 are verbatim, and what was done to the rest:
 
 | File | From | Verbatim? |
@@ -12,6 +13,7 @@ are verbatim, and what was done to the rest:
 | `listing_sofa.html` | a leaf category page | **trimmed** |
 | `hub_furniture.html` | a department hub | **trimmed** |
 | `browse_sofa_p1.json` | one Constructor browse response | **trimmed**: 6 of 24 results, bulky per-result fields removed, `result_id` replaced with zeros |
+| `fingerprint_chromium.json` | a 2Captcha Fingerprint API response (`/fingerprint/random`, `format=chromium`, 2026-09-30) | **trimmed** to the fields the client reads, the dropped keys listed inside; shows where each applied value sits in a real response |
 
 **Trimmed** means: a minimal HTML shell around `window.__INITIAL_STATE__`, and
 inside the state only the nodes the parser reads — `productDetails`
