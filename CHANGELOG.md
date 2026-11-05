@@ -27,6 +27,20 @@ behaviour for an existing user is called out at the top of its release.
 
 ### Added
 
+- `--fingerprint`, `--fp-tags`, `--fp-country`, `--fp-refresh` on
+  `playwright_scraper.py` (local browser only). Fetches a profile from the
+  2Captcha Fingerprint API with `TWOCAPTCHA_KEY` and applies it: user agent
+  with matching client hints (`Sec-CH-UA*`, `navigator.userAgentData`),
+  locale and `Accept-Language`, timezone, screen, window and scale factor,
+  navigator values and WebGL strings. The values are read back from the page
+  after the first navigation and recorded in `transport_facts.fingerprint`.
+  Refused with a typed `--cdp-endpoint` (exit 2); a
+  `POTTERYBARN_CDP_ENDPOINT` from `.env` is ignored for the run. A key
+  without a fingerprint plan exits 5 before any page is fetched. Selenium and
+  pyppeteer refuse the flag (exit 2). `fingerprint_client.py` now reads the
+  fields where a real response keeps them (WebGL strings in
+  `webgl.glParameters`, client hints from `userAgent.*`); no engine used it
+  before, so no earlier run was affected.
 - `--load-media` on the browser engines.
 - Proxy traffic meter (`proxy_meter.py`) on every transport, active only
   behind a local proxy: curl's own size counters, `requests` request/response
@@ -61,6 +75,13 @@ behaviour for an existing user is called out at the top of its release.
 
 ### Fixed
 
+- A browser engine whose start fails after the browser is already up (for
+  example a refused fingerprint fetch) now closes that browser before
+  exiting 5.
+- The README's "Related scrapers" list is complete again. The offline
+  suite's check that no other repository's text drifted into this one now
+  skips that section only, which names other repositories on purpose; every
+  other part of the README and every other shipped file is still checked.
 - Proxy traffic meter: Selenium and Puppeteer no longer count requests that never leave the browser. Chrome's new-tab page loads `chrome://` scripts (about 2.8 MB, seen through a stub proxy) that were reported as finished loads and added to `proxy_bytes`, enough to bring a run noticeably closer to `--proxy-budget-mb`. Only `http(s)` requests and responses are counted now.
 
 ## [1.1.0] — 2026-10-16

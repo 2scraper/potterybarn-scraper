@@ -153,7 +153,8 @@ Deduping hides the repeat, not the gap. Seen so far:
 
 Other sweeps the same days closed exactly, including five in a row on
 2026-09-24 in relevance and price order at 24, 100 and 200 per page, and 5
-of the 7 daily canaries. So with `--all-pages`, when the distinct count falls
+of the 7 daily canaries (the canary ran daily until 2026-10-16 and has run
+weekly, on Mondays, since). So with `--all-pages`, when the distinct count falls
 short of the total, `api_scraper.py` runs a **second sweep sorted by
 `lowestPrice`** and adds what the first missed (`second_sweep_recovered` in
 the sidecar). On 2026-10-01 that recovered all 30 and the listing closed at
@@ -457,6 +458,49 @@ profile's own exit failing at the vendor, not a lock. It happened on
 2026-10-01 while a residential exit attached to the same profile per
 connection worked (`tools/browser_profile_client.py connection`).
 
+### A 2Captcha fingerprint on a local browser (Playwright)
+
+```bash
+python3 playwright_scraper.py --fingerprint --fp-country us --mode product \
+  --url https://www.potterybarn.com/products/delaney-marble-end-table/
+```
+
+`--fingerprint` fetches one profile from the
+[2Captcha Fingerprint API](https://2captcha.com/fingerprints/api) with
+`TWOCAPTCHA_KEY` and applies it to the Chromium this scraper launches: user
+agent together with its client hints (`Sec-CH-UA*`, `navigator.userAgentData`),
+locale and `Accept-Language`, timezone, screen and window size, device scale
+factor, `navigator.platform` / `hardwareConcurrency` / `deviceMemory` and the
+WebGL vendor and renderer strings. After the first page the scraper reads
+these back from the live page and records them, with any mismatch, under
+`transport_facts.fingerprint` in the run metadata.
+
+* **Local browser only.** The Scraping Browser API brings its own
+  fingerprint, so a typed `--cdp-endpoint` with `--fingerprint` exits 2, and a
+  `POTTERYBARN_CDP_ENDPOINT` from `.env` is ignored for that run (with a
+  notice). Selenium and pyppeteer do not implement `--fingerprint` and refuse
+  it (exit 2).
+* **A separate subscription.** A key without a fingerprint plan is answered
+  `403 ERROR_FINGERPRINT_PLAN_REQUIRED`; the run then exits 5 before any page
+  is fetched.
+* `--fp-tags` takes ONE tag (default `Windows`). `--fp-country` should match
+  the proxy's exit. The response is cached in
+  `~/.cache/2captcha-fingerprints/` per set of flags, so the same flags give the
+  same identity (and no new charge); `--fp-refresh` fetches a new one.
+* What it does not change: the browser engine underneath is still the
+  installed Chromium, which may be a different version from the one the
+  profile names, and WebGL output is the real GPU's.
+
+Measured on 2026-11-05, local headless Chromium 156 through a rotating
+2Captcha residential US exit, the Delaney product page, one run each,
+alternating: **with** `--fingerprint` the page was served on **4 of 5** runs
+(4 of 4 SKUs each, read back with no mismatch), **without** it on **0 of 4**
+(HTTP 403). The exit changed per connection, the sample is small, and one
+profile was used throughout (a real US/Windows API response from 2026-09-21,
+served from the cache: the account had no fingerprint plan that day). It is
+evidence that the client identity is what this site scores, not a guarantee.
+`http_scraper.py` remains the default path for product pages.
+
 ### Engine limits, measured
 
 * **Selenium cannot use an authenticated CDP endpoint.** chromedriver's
@@ -657,8 +701,10 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md), organised by symptom.
   it needs no browser and no profile lock.
 * **[Captcha solving](https://2captcha.com)**: `TWOCAPTCHA_KEY`. Wired, and
   on this site it has never had anything to do.
-* **Fingerprints**: `fingerprint_client.py`. Not needed over CDP, where the
-  remote browser brings its own.
+* **[Fingerprints](https://2captcha.com/fingerprints/api)**: `--fingerprint`
+  (Playwright, local browser), billed as a separate subscription on the same
+  key. Not used over CDP, where the remote browser brings its own. See
+  [the fingerprint section](#a-2captcha-fingerprint-on-a-local-browser-playwright).
 
 ---
 
@@ -675,6 +721,7 @@ Same CLI conventions, same output contract (one row per item, JSON or CSV, a `.m
 - [Sleep Number scraper](https://github.com/2scraper/sleepnumber-scraper) — Smart beds, mattresses and bedding from sleepnumber.com
 - [StockX scraper](https://github.com/2scraper/stockx-scraper) — Search results, category listings and product pages
 - [TikTok Shop scraper](https://github.com/2scraper/tiktok-shop-scraper) — Product pages to 39 columns
+- [Tokopedia scraper](https://github.com/2scraper/tokopedia-scraper) — IDR prices, discounts, ratings, sold counts and shops…
 
 All scrapers: [github.com/2scraper](https://github.com/2scraper) · Need another site? [Open a request](https://github.com/2scraper/.github/issues/new?title=%5BScraper%20request%5D%20)
 
