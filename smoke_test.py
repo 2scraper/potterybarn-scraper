@@ -1206,6 +1206,43 @@ def test_rucaptcha_gateway_mints_sessions():
     check("the region is kept", all("-region-us" in m for m in minted))
 
 
+def test_smart_quotes_in_dotenv_are_warned_about_by_key_never_by_value():
+    """TextEdit types “ ” for ". Only ASCII quotes are stripped, so the value
+    keeps the curly ones; the loader must say so without printing it."""
+    import env_config
+    secret = "http://SECRET-LOGIN:SECRET-PASS@proxy.example:8080"
+    names = ("POTTERYBARN_SQ_A", "POTTERYBARN_SQ_B", "POTTERYBARN_SQ_C", "POTTERYBARN_SQ_D")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, ".env")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("# a comment with “quotes” is not a value\n"
+                         "POTTERYBARN_SQ_A=\u201c%s\u201d\n"       # TextEdit double
+                         "POTTERYBARN_SQ_B=\u2018abc\u2019\n"     # TextEdit single
+                         "POTTERYBARN_SQ_C=\"plain\"\n"
+                         "POTTERYBARN_SQ_D='plain'\n" % secret)
+        eq("both typographic lines are found, by key and line",
+           env_config.smart_quoted_keys(path), {"POTTERYBARN_SQ_A": [2], "POTTERYBARN_SQ_B": [3]})
+        warned = []
+        saved = {k: os.environ.pop(k, None) for k in names}
+        try:
+            with mock.patch.object(env_config.logger, "warning",
+                                   lambda fmt, *a: warned.append(fmt % a)):
+                env_config.load_env(path)
+            loaded = os.environ.get("POTTERYBARN_SQ_A")
+        finally:
+            for k, v in saved.items():
+                os.environ.pop(k, None)
+                if v is not None:
+                    os.environ[k] = v
+    eq("load_env warns once per affected key", len(warned), 2)
+    check("...naming the key and the line", "POTTERYBARN_SQ_A" in warned[0] and "line 2" in warned[0])
+    check("...and never the value", not any("SECRET" in w for w in warned))
+    eq("the value itself is loaded as before (warned, not rewritten)",
+       loaded, "\u201c%s\u201d" % secret)
+    eq("ASCII quotes and comments are not reported",
+       env_config.smart_quoted_keys(os.path.join(HERE, ".env.example")), {})
+
+
 def test_env_keys_and_example():
     import env_config
     eq("ENV_KEYS", set(env_config.ENV_KEYS),

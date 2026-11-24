@@ -7,6 +7,15 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+### Added
+
+- `.env` values holding typographic quotes (`“ ” ‘ ’ „ « »`, which macOS
+  TextEdit types in place of `"` and `'`) are warned about on every load,
+  by key and line number, never by value. Only ASCII quotes are stripped, so
+  `POTTERYBARN_PROXY=“http://…”` was read with the curly quotes and failed
+  far from its cause. The value is still loaded as written; nothing is
+  rewritten. See TROUBLESHOOTING.
+
 ### Fixed
 
 - Tests only: `smoke_test.py` no longer reads the developer's real `.env`.
