@@ -58,6 +58,8 @@ behaviour for an existing user is called out at the top of its release.
 
 ### Changed
 
+- CI only: the offline-checks job runs on `ubuntu-24.04` instead of `ubuntu-latest`, which moved to Ubuntu 26.04, where `actions/setup-python` has no Python 3.9 build. 3.9 stays the supported floor.
+- Docker: the image installs `libatomic1` before Playwright. Playwright's Node driver needs it to run `playwright install --with-deps` at all, and `python:3.12-slim` does not ship it, so the image build failed (2026-11-24).
 - A proxy `402` (traffic/balance exhausted) is handled like a `407` in
   `http_scraper.py`, `api_scraper.py` and `catalog_walk.py --via-proxy`:
   exit 5, never retried or rotated. `catalog_walk.py` reported a proxy `407`
