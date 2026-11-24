@@ -199,6 +199,7 @@ def resolve_listing(args, log) -> Dict[str, Any]:
         if pool and not args.no_page:
             page = read_listing_page(args, pool, log)
             context["page_state"] = page["state"]
+            context["curl"] = page.get("curl")
             if page["state"] == "hub":
                 raise HubError(page["final_url"])
             if page["state"] == "listing":
@@ -244,7 +245,9 @@ class HubError(RuntimeError):
 def read_listing_page(args, pool, log) -> Dict[str, Any]:
     """Fetch the leaf page over curl for its key, group id and currency."""
     import http_scraper
-    session = http_scraper.build_session(pool.current, args.http_client)
+    session = http_scraper.build_session(pool.current, args.http_client,
+                                         getattr(args, "curl_path", None))
+    curl = http_scraper.announce_curl(session)
     facts: Dict[str, Any] = {}
     rotate = http_scraper.make_rotator(args, pool, facts)
     result, _ = http_scraper.fetch(session, args.url, args.timeout,
@@ -252,7 +255,7 @@ def read_listing_page(args, pool, log) -> Dict[str, Any]:
                                    log=log, rotate=rotate)
     state = result.state
     log("listing page: %s (HTTP %s, %d bytes)" % (state, result.status, len(result.html)))
-    return {"state": state, "final_url": result.final_url,
+    return {"state": state, "final_url": result.final_url, "curl": curl,
             "context": P.listing_context(result.html) if state == "listing" else {}}
 
 
@@ -366,6 +369,7 @@ def scrape(args) -> Tuple[List[Product], Dict[str, Any]]:
         "currency": currency,
         "currency_source": context["currency_source"],
         "listing_page_state": context["page_state"],
+        "curl": context.get("curl"),
         "pages_requested": "all" if args.all_pages else args.pages,
         "pages_completed": 0,
         "failed_pages": [],
@@ -520,6 +524,7 @@ def parse_args(argv=None):
                    default=http_scraper.default_http_client(),
                    help="Client for the CATEGORY PAGE fetch (the API always "
                         "uses requests).")
+    http_scraper.add_curl_path_arg(p)
     p.add_argument("--proxy", default=None)
     p.add_argument("--proxy-file", default=None)
     p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES, default="per-run")

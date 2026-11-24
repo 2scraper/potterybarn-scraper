@@ -69,6 +69,21 @@ Chromium was refused every time, even on `/`.
 does not claim to know. `http_scraper.py` uses the client that was measured
 to work: `--http-client curl` is the default wherever curl is on PATH.
 
+**And which curl matters: its TLS library is scored** (2026-11-24, macOS,
+each pair through one session-pinned US residential exit, same headers):
+
+| curl build | default TLS | `/` | product page |
+|---|---|---|---|
+| `/usr/bin/curl` 8.7.1 (macOS) | LibreSSL 3.3.6 | 200 on 2 of 2 | **403 on 8 of 8** exits |
+| Homebrew curl 8.0.1 | OpenSSL 1.1.1t | 200 on 2 of 2 | **200 on 2 of 2**; then 3 of 3 full runs complete |
+
+The 403 is the same 1,326-byte page a non-US address gets, so a Mac's
+system curl reads exactly like a burned proxy pool: six exits on six US
+residential ISPs were all refused. Both scripts print the curl they run and
+its TLS library into the sidecar (`transport_facts.curl`) and warn on
+LibreSSL or SecureTransport. Point `--curl-path` or `POTTERYBARN_CURL` at
+an OpenSSL build (see *Install*).
+
 ---
 
 ## Install
@@ -80,6 +95,14 @@ pip install -r requirements.txt      # beautifulsoup4, requests, Brotli
 
 # only if you want a browser, and then ONE engine per virtualenv
 pip install -r requirements-playwright.txt && playwright install chromium
+```
+
+**On macOS, install an OpenSSL curl** — the system one is refused on product
+pages (see *Request shape*, above):
+
+```bash
+brew install curl
+echo "POTTERYBARN_CURL=$(brew --prefix curl)/bin/curl" >> .env
 ```
 
 `Brotli` is not optional. A configurable product (every sofa measured) ships

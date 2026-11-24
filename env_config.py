@@ -40,6 +40,7 @@ ENV_KEYS = {
     "POTTERYBARN_CDP_ENDPOINT": "cdp_endpoint",
     "POTTERYBARN_PROXY": "proxy",
     "POTTERYBARN_URL": "url",
+    "POTTERYBARN_CURL": "curl_path",
 }
 # Deliberately NOT here: an output prefix. `--out` already carries a non-empty
 # default, so `apply()` would never see it as unset and the variable would be

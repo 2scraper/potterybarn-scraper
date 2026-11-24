@@ -18,6 +18,13 @@ The site refused. In order of likelihood:
    2026-09-24 and 2 of 4 on 2026-10-01, where curl got it nearly every time.
    The sidecar's `transport` says `http-curl` or `http-requests`. If it says
    `requests`, curl is not on PATH.
+2a. **The wrong curl.** Measured 2026-11-24: macOS's `/usr/bin/curl`
+   (LibreSSL) got the 403 on 8 of 8 US residential exits, and Homebrew's
+   curl (OpenSSL) got the product page through the same exits. The run
+   prints a warning, and the sidecar's `transport_facts.curl.tls` names the
+   library. Fix: `brew install curl` and set
+   `POTTERYBARN_CURL=$(brew --prefix curl)/bin/curl` in `.env`. Rule this
+   out before blaming the proxy — the symptom is identical.
 3. **A local browser.** A local Chromium was refused on every product-page
    trial (0 of 19). Use `http_scraper.py`, or the Scraping Browser API.
 4. **A scored exit.** `states` shows `blocked` or `geo_redirect` after
