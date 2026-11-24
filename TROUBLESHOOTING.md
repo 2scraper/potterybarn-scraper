@@ -33,6 +33,16 @@ The site refused. In order of likelihood:
 Exit 3 is never a captcha on this site. No challenge has been met anywhere,
 so a solver key will not change it.
 
+## A key or proxy from `.env` "isn't working", and the run warns about typographic quotes
+
+macOS TextEdit (and most word processors) replace `"` and `'` with
+typographic quotes as you type: `POTTERYBARN_PROXY=“http://…”`. Only plain
+ASCII quotes are stripped, so the value is read WITH the curly ones and fails
+far from its cause. Every run that loads `.env` warns, naming the key and the
+line, never the value. Retype the quotes as plain `"`, or drop them; edit
+`.env` with `nano` or `vim`, or turn off TextEdit's Edit > Substitutions >
+Smart Quotes. `cat -v .env` shows any such character as `M-b...`.
+
 ## `geo_redirect` in the states
 
 The exit is not in the US, or has drifted out of it. A pinned 2Captcha

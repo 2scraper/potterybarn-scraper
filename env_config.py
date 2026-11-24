@@ -167,6 +167,44 @@ def _report_duplicates(path):
             key, len(occurrences), path, where, winner_line, shown)
 
 
+# Typographic quotes, as macOS TextEdit (Edit > Substitutions > Smart Quotes,
+# on by default) and most word processors type them in place of " and '.
+# Only ASCII quotes are stripped, by this parser and by python-dotenv alike,
+# so `POTTERYBARN_PROXY=“http://…”` is read WITH the curly quotes and fails
+# far from its cause -- as an unparseable proxy URL or a refused key.
+# Checked 2026-11-24: _parse_line('K=“http://a”') -> ('K', '“http://a”').
+# Warned about, never silently "fixed": the loader does not get to decide
+# what the operator meant (same rule as duplicate_keys()).
+_SMART_QUOTES = "“”„‘’‚«»"
+
+
+def smart_quoted_keys(path=None):
+    """{key: [line number, ...]} for every value holding a typographic quote."""
+    if path is None:
+        path = DEFAULT_ENV_PATH
+    path = Path(path)
+    if not path.is_file():
+        return {}
+    found = {}
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        parsed = _parse_line(raw)
+        if parsed and any(ch in parsed[1] for ch in _SMART_QUOTES):
+            found.setdefault(parsed[0], []).append(lineno)
+    return found
+
+
+def _report_smart_quotes(path):
+    """Name the key and the line, never the value: it can be a credential."""
+    for key, lines in smart_quoted_keys(path).items():
+        logger.warning(
+            "%s in %s (line %s) contains typographic quotes (“ ” ‘ ’ « »), "
+            "which are read as part of the value. TextEdit types them in "
+            "place of \" and '. Retype them as plain quotes or remove them "
+            "(nano or vim keep them plain; in TextEdit turn off Edit > "
+            "Substitutions > Smart Quotes).",
+            key, path, ", ".join(str(n) for n in lines))
+
+
 def load_env(path=None, override=False):
     """Load `.env` into os.environ. Returns the path used, or None.
 
@@ -185,6 +223,7 @@ def load_env(path=None, override=False):
     # Reported before either parser runs, so the warning does not depend on
     # which branch is taken -- the branch is exactly what was unreliable.
     _report_duplicates(path)
+    _report_smart_quotes(path)
 
     # Defer to python-dotenv when the user already has it: their version may
     # support syntax this parser does not (multi-line values, interpolation).
