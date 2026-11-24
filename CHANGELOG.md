@@ -7,6 +7,8 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-11-24
+
 > **Behaviour changes.**
 > - The browser engines (`playwright_scraper.py`, `puppeteer_scraper.py`,
 >   `selenium_scraper.py`) send ONE `HEAD` for the site's `robots.txt`
@@ -24,6 +26,11 @@ behaviour for an existing user is called out at the top of its release.
 >   targets found so far, 5 with none. Nothing is limited over
 >   `--cdp-endpoint`, with no proxy, or for `api_scraper.py`'s direct API
 >   calls.
+> - `http_scraper.py`: a refused product no longer moves to a fresh exit
+>   after its LAST attempt. In a multi-URL run the next product therefore
+>   starts on the exit the previous one was refused on, and rotates from
+>   there. A Mac's system curl (LibreSSL) is now warned about on every run:
+>   it is refused on product pages; set `POTTERYBARN_CURL` (see Added).
 
 ### Added
 
