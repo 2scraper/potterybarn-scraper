@@ -74,6 +74,14 @@ _BRACED_PLACEHOLDER_RE = re.compile(r"\{[^{}]+\}")
 
 _loaded_from = None
 
+# The one place the default `.env` location is decided. Every function below
+# that takes `path=None` reads THIS name at call time, so the offline suite
+# can point it somewhere empty: before it did, any test that ran a script's
+# parse_args() loaded the developer's real .env -- 17 checks failed on a
+# machine with POTTERYBARN_PROXY set, and the values then stayed in
+# os.environ for every later test (measured 2026-11-24).
+DEFAULT_ENV_PATH = Path(__file__).resolve().parent / ".env"
+
 
 def _parse_line(line):
     """Return (key, value) or None. Understands `export K=V`, quotes, # comments."""
@@ -130,7 +138,7 @@ def duplicate_keys(path=None):
     value with a trailing comment all parse identically in both.
     """
     if path is None:
-        path = Path(__file__).resolve().parent / ".env"
+        path = DEFAULT_ENV_PATH
     path = Path(path)
     if not path.is_file():
         return {}
@@ -168,7 +176,7 @@ def load_env(path=None, override=False):
     global _loaded_from
 
     if path is None:
-        path = Path(__file__).resolve().parent / ".env"
+        path = DEFAULT_ENV_PATH
     path = Path(path)
 
     if not path.is_file():
@@ -223,7 +231,7 @@ def unknown_keys(path=None):
     silently as "the key just isn't being picked up".
     """
     if path is None:
-        path = Path(__file__).resolve().parent / ".env"
+        path = DEFAULT_ENV_PATH
     path = Path(path)
     if not path.is_file():
         return []
