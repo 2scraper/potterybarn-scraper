@@ -830,6 +830,111 @@ def test_fetch_rotates_on_a_refusal_not_on_a_timeout():
     eq("a timeout retried the SAME exit", (len(rotations), result.state), (0, "product"))
 
 
+def test_fetch_does_not_rotate_after_its_last_attempt():
+    """A rotation after the final attempt minted an exit that never sent a
+    request, and the sidecar's `exit` then named THAT exit as the one that
+    was refused (measured 2026-11-24: retries=2 sent 3 requests, minted 3
+    sessions, and `exit` pointed at the third, unused one)."""
+    import http_scraper
+
+    refused = http_scraper._Response(403, fixture("blocked_403_1326.html"), "https://www.potterybarn.com/p")
+    used, minted = [], []
+
+    class S:
+        def __init__(self, name):
+            self.name = name
+
+        def get(self, url, **kw):
+            used.append(self.name)
+            return refused
+
+    def rotate():
+        minted.append("exit%d" % (len(minted) + 1))
+        return S(minted[-1]), minted[-1]
+
+    result, session = http_scraper.fetch(S("exit0"), "u", 5, retries=2, retry_delay=0,
+                                         rotate=rotate)
+    eq("3 attempts went out on 3 exits", used, ["exit0", "exit1", "exit2"])
+    eq("...and only 2 rotations were made, none after the last attempt", minted, ["exit1", "exit2"])
+    eq("...the result names the exit that was actually refused",
+       (result.state, result.exit_used, session.name), ("blocked", "exit2", "exit2"))
+
+
+def test_curl_tls_backend_is_read_and_a_refused_one_warned():
+    """Measured 2026-11-24 on macOS, same exits, same headers: /usr/bin/curl
+    (LibreSSL) got the 403 page on 6 of 6 exits, Homebrew curl (OpenSSL) got
+    the product page. Both lines below are verbatim `curl --version` output."""
+    import http_scraper as H
+    system = ("curl 8.7.1 (x86_64-apple-darwin26.0) libcurl/8.7.1 (SecureTransport) "
+              "LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.69.0")
+    brew = ("curl 8.0.1 (x86_64-apple-darwin22.3.0) libcurl/8.0.1 (SecureTransport) "
+            "OpenSSL/1.1.1t zlib/1.2.12 brotli/1.0.9 zstd/1.5.5 libidn2/2.3.4 "
+            "libssh2/1.10.0 nghttp2/1.52.0 librtmp/2.3")
+    linux = "curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3"
+    eq("system curl: the DEFAULT backend is LibreSSL, not the parenthesised one",
+       H.parse_curl_version(system), {"version": "8.7.1", "tls": "LibreSSL/3.3.6"})
+    eq("Homebrew curl: OpenSSL", H.parse_curl_version(brew)["tls"], "OpenSSL/1.1.1t")
+    eq("Linux curl: OpenSSL", H.parse_curl_version(linux)["tls"], "OpenSSL/3.0.13")
+    eq("garbage parses to nothing, never raises", H.parse_curl_version(""),
+       {"version": None, "tls": None})
+    check("LibreSSL is warned about", H.tls_warning({"path": "/usr/bin/curl",
+                                                     "tls": "LibreSSL/3.3.6"}) is not None)
+    check("...and the warning names the fix", "POTTERYBARN_CURL" in H.tls_warning(
+        {"path": "/usr/bin/curl", "tls": "LibreSSL/3.3.6"}))
+    check("a bare SecureTransport default is warned about too",
+          H.tls_warning({"path": "c", "tls": "SecureTransport"}) is not None)
+    check("OpenSSL is not", H.tls_warning({"path": "c", "tls": "OpenSSL/3.0.13"}) is None)
+    check("an unreadable version is not (unmeasured, so no claim)",
+          H.tls_warning({"path": "c", "tls": None}) is None)
+
+
+def test_curl_path_reaches_the_command_line_and_a_bad_one_is_usage():
+    import http_scraper as H
+    seen = []
+
+    def fake_run(command, **kw):
+        seen.append(command[0])
+        return mock.Mock(returncode=0, stdout="<html></html>\n200 0 0 0 0 https://www.potterybarn.com/ ",
+                         stderr="")
+    session = H.build_session(None, "curl", sys.executable)  # any real executable
+    with mock.patch.object(H.subprocess, "run", fake_run):
+        session.get("https://www.potterybarn.com/")
+    check("--curl-path is the binary that runs",
+          len(seen) == 1 and os.path.samefile(seen[0], sys.executable))
+    try:
+        H.build_session(None, "curl", "/nonexistent/curl")
+        raised = None
+    except SystemExit as exc:
+        raised = type(exc)
+    eq("a missing --curl-path is UsageError (exit 2), not a crash", raised,
+       H.output_writer.UsageError)
+    args = H.parse_args(["--url", "https://www.potterybarn.com/products/x/",
+                         "--curl-path", "/x/curl"])
+    eq("http_scraper takes --curl-path", args.curl_path, "/x/curl")
+    import api_scraper
+    eq("...and so does api_scraper, which reads the category page through curl",
+       api_scraper.parse_args(["--group-id", "sofa", "--curl-path", "/x/curl"]).curl_path,
+       "/x/curl")
+    check("POTTERYBARN_CURL fills --curl-path",
+          __import__("env_config").ENV_KEYS["POTTERYBARN_CURL"] == "curl_path")
+
+
+def test_sidecar_records_which_curl_ran():
+    import http_scraper as H
+    session = H.CurlSession(None, "/opt/x/curl")
+    with mock.patch.object(H, "curl_info", return_value={"path": "/opt/x/curl",
+                                                         "version": "8.7.1",
+                                                         "tls": "LibreSSL/3.3.6"}):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            facts = H.announce_curl(session)
+    eq("the sidecar gets path, version and TLS", facts,
+       {"path": "/opt/x/curl", "version": "8.7.1", "tls": "LibreSSL/3.3.6"})
+    check("...and a refused stack is said out loud, not only with --verbose",
+          "LibreSSL" in err.getvalue())
+    eq("the requests client records no curl", H.announce_curl(object()), None)
+
+
 def test_default_client_is_the_measured_one():
     import http_scraper
     with mock.patch.object(http_scraper, "CURL_AVAILABLE", True):
@@ -1048,7 +1153,8 @@ def test_rucaptcha_gateway_mints_sessions():
 def test_env_keys_and_example():
     import env_config
     eq("ENV_KEYS", set(env_config.ENV_KEYS),
-       {"TWOCAPTCHA_KEY", "POTTERYBARN_PROXY", "POTTERYBARN_CDP_ENDPOINT", "POTTERYBARN_URL"})
+       {"TWOCAPTCHA_KEY", "POTTERYBARN_PROXY", "POTTERYBARN_CDP_ENDPOINT", "POTTERYBARN_URL",
+        "POTTERYBARN_CURL"})
     # A name may be documented commented out (`# POTTERYBARN_URL=`): it is
     # an optional default, and shipping it live let it hijack typed flags.
     documented = set(re.findall(r"^(?:# )?([A-Z][A-Z0-9_]+)=", open(os.path.join(HERE, ".env.example")).read(), re.M))

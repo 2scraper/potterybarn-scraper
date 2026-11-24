@@ -106,6 +106,84 @@ def default_http_client() -> str:
     return "curl" if CURL_AVAILABLE else "requests"
 
 
+# WHICH curl matters, not only whether there is one. Measured 2026-11-24 on
+# macOS, the same session-pinned US residential exit, the same headers:
+#
+#   /usr/bin/curl 8.7.1, default TLS LibreSSL 3.3.6   product page 403 (6/6 exits)
+#   Homebrew curl 8.0.1, default TLS OpenSSL 1.1.1t   product page 200, 3/3 full runs
+#
+# The site decides on the TLS handshake, so the system curl on a Mac is
+# refused on every exit and the run looks exactly like a burned proxy pool.
+# The TLS library is therefore recorded in the sidecar and warned about.
+_TLS_LIBS = ("OpenSSL", "LibreSSL", "BoringSSL", "AWS-LC", "quictls",
+             "SecureTransport", "Schannel", "GnuTLS", "wolfSSL", "mbedTLS",
+             "rustls")
+# Backends measured (or, for SecureTransport, built on the same Apple stack)
+# to be refused. A name not listed here is not claimed to work either -- it
+# is simply unmeasured, and the sidecar records it so it can be.
+REFUSED_TLS = ("LibreSSL", "SecureTransport")
+_curl_info_cache: Dict[str, Dict[str, Any]] = {}
+
+
+def resolve_curl(path: Optional[str] = None) -> Optional[str]:
+    """The curl binary to run: `path` if given (it must exist), else PATH's."""
+    if path:
+        found = shutil.which(path)
+        if not found:
+            raise output_writer.UsageError(
+                "--curl-path / POTTERYBARN_CURL: %r is not an executable file" % path)
+        return found
+    return shutil.which("curl")
+
+
+def parse_curl_version(first_line: str) -> Dict[str, Optional[str]]:
+    """`curl --version`'s first line -> {"version", "tls"}.
+
+    In a multi-SSL build curl puts the backends it is NOT using by default in
+    parentheses: `libcurl/8.0.1 (SecureTransport) OpenSSL/1.1.1t` defaults to
+    OpenSSL, `libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6` to LibreSSL.
+    """
+    tokens = first_line.split()
+    version = tokens[1] if len(tokens) > 1 and tokens[0] == "curl" else None
+    tls = None
+    for token in tokens:
+        if token.startswith("("):
+            continue
+        name = token.split("/", 1)[0]
+        if name in _TLS_LIBS:
+            tls = token
+            break
+    return {"version": version, "tls": tls}
+
+
+def curl_info(binary: str) -> Dict[str, Any]:
+    """{"path", "version", "tls"} for a curl binary, asked once per run."""
+    if binary not in _curl_info_cache:
+        try:
+            out = subprocess.run([binary, "--version"], capture_output=True,
+                                 text=True, timeout=15).stdout
+            info: Dict[str, Any] = parse_curl_version(out.splitlines()[0] if out else "")
+        except (OSError, subprocess.TimeoutExpired):
+            info = {"version": None, "tls": None}
+        info["path"] = binary
+        _curl_info_cache[binary] = info
+    return _curl_info_cache[binary]
+
+
+def tls_warning(info: Dict[str, Any]) -> Optional[str]:
+    """The warning for a curl whose TLS stack this site was measured to refuse."""
+    name = (info.get("tls") or "").split("/", 1)[0]
+    if name not in REFUSED_TLS:
+        return None
+    return ("[!] %s uses %s for TLS. Measured 2026-11-24, potterybarn.com "
+            "answers that handshake with its 403 page on every exit, which "
+            "looks exactly like a burned proxy. Point --curl-path (or "
+            "POTTERYBARN_CURL in .env) at a curl built with OpenSSL, e.g. "
+            "Homebrew's: brew install curl, then "
+            "POTTERYBARN_CURL=$(brew --prefix curl)/bin/curl."
+            % (info.get("path"), info.get("tls")))
+
+
 class CurlError(RuntimeError):
     pass
 
@@ -154,8 +232,9 @@ class CurlSession:
     (`--config -`), never as `--proxy`, which `ps` would show.
     """
 
-    def __init__(self, proxy: Optional[str] = None):
+    def __init__(self, proxy: Optional[str] = None, binary: str = "curl"):
         self.proxy = proxy
+        self.binary = binary
         self.headers = dict(BROWSER_HEADERS)
 
     def _once(self, url: str, timeout: int) -> _Response:
@@ -163,7 +242,7 @@ class CurlSession:
         for name, value in self.headers.items():
             header_args += ["-H", "%s: %s" % (name, value)]
         command = [
-            "curl", "--silent", "--show-error",
+            self.binary, "--silent", "--show-error",
             # HTTP/2 explicitly: on homedepot.com forcing 1.1 changed the
             # answer, and every measurement here was HTTP/2.
             "--http2", "--compressed",
@@ -268,13 +347,15 @@ def proxy_message(exc: "ProxyAuthError") -> str:
     return text
 
 
-def build_session(proxy: Optional[str], client: Optional[str] = None):
+def build_session(proxy: Optional[str], client: Optional[str] = None,
+                  curl_path: Optional[str] = None):
     client = client or default_http_client()
     if client == "curl":
-        if not CURL_AVAILABLE:
+        binary = resolve_curl(curl_path)
+        if not binary:
             raise RuntimeError("--http-client curl was asked for but curl is "
                                "not on PATH")
-        return CurlSession(proxy)
+        return CurlSession(proxy, binary)
     if requests is None:
         raise RuntimeError("the requests client needs `requests`: "
                            "pip install -r requirements.txt")
@@ -344,7 +425,13 @@ def fetch(session, url: str, timeout: int, *, retries: int = 2,
             if log:
                 log("  attempt %d/%d: %s (HTTP %s, %d bytes)"
                     % (attempt, attempts, state, last.status, len(last.html)))
-            if page_flow.should_rotate_exit(state) and rotate is not None:
+            # Only when another attempt will use it: a rotation after the last
+            # attempt minted an exit that never sent a request, and the
+            # sidecar's `exit` then named it as the refused one (measured
+            # 2026-11-24: 3 requests, 3 sessions minted, `exit` = the unused
+            # third). It also spent the run's --proxy-block-retries budget.
+            if (attempt < attempts and page_flow.should_rotate_exit(state)
+                    and rotate is not None):
                 rotated = rotate()
                 if rotated is not None:
                     session, exit_label = rotated
@@ -353,6 +440,22 @@ def fetch(session, url: str, timeout: int, *, retries: int = 2,
         if attempt < attempts:
             time.sleep(retry_delay)
     return last, session  # type: ignore[return-value]
+
+
+def announce_curl(session) -> Optional[Dict[str, Any]]:
+    """Warn about a refused TLS stack; return the curl facts for the sidecar.
+
+    None for the requests client. Printed unconditionally, not behind
+    --verbose: a run on a refused stack fails on every exit, and the warning
+    is the only line that says why.
+    """
+    if not isinstance(session, CurlSession):
+        return None
+    info = curl_info(session.binary)
+    warning = tls_warning(info)
+    if warning:
+        print(warning, file=sys.stderr)
+    return dict(info)
 
 
 def make_rotator(args, pool, facts: Dict[str, Any]):
@@ -378,7 +481,8 @@ def make_rotator(args, pool, facts: Dict[str, Any]):
         state["rotations"] += 1
         facts["rotations"] = state["rotations"]
         facts["exit"] = proxy_pool.mask(nxt)
-        return build_session(nxt, args.http_client), proxy_pool.mask(nxt)
+        return (build_session(nxt, args.http_client, getattr(args, "curl_path", None)),
+                proxy_pool.mask(nxt))
     return rotate
 
 
@@ -434,11 +538,13 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
         print("WARNING: no proxy configured. Measured 2026-09-23, a non-US "
               "address gets the branded 403 on every product page. Set "
               "POTTERYBARN_PROXY in .env to a US exit.", file=sys.stderr)
-    session = build_session(proxy, args.http_client)
+    session = build_session(proxy, args.http_client, getattr(args, "curl_path", None))
     log = (lambda m: print(m, file=sys.stderr)) if args.verbose else (lambda m: None)
+    curl = announce_curl(session)
 
     facts: Dict[str, Any] = {
         "transport": "http-%s" % args.http_client,
+        "curl": curl,
         "exit": proxy_pool.mask(proxy) if proxy else None,
         "pages_requested": len(targets),
         "pages_completed": 0,
@@ -556,6 +662,15 @@ def _non_negative_float(value):
     return number
 
 
+def add_curl_path_arg(p) -> None:
+    """Shared with api_scraper.py, which reads the listing page through curl."""
+    p.add_argument("--curl-path", default=None,
+                   help="The curl binary to run (default: the first on PATH). "
+                        "Also POTTERYBARN_CURL in .env. On macOS the system "
+                        "curl uses LibreSSL, which this site refuses — use a "
+                        "curl built with OpenSSL, e.g. Homebrew's.")
+
+
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
         description="Scrape potterybarn.com product pages over plain HTTP — "
@@ -591,6 +706,7 @@ def parse_args(argv=None):
                         "exits: curl got the product page on 6, requests was "
                         "refused on 5 and timed out on 1."
                         % default_http_client())
+    add_curl_path_arg(p)
     p.add_argument("--proxy", default=None,
                    help="Prefer POTTERYBARN_PROXY in .env — a proxy URL on the "
                         "command line is visible to `ps`.")

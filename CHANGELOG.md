@@ -55,6 +55,16 @@ behaviour for an existing user is called out at the top of its release.
   `**live (product)**: proxy traffic X.X MB of 10 MB` to the job summary and
   fails with `::error::stopped: proxy budget 10 MB exceeded` when the run hit
   it. The engine jobs run the meter against a stub proxy in a real browser.
+- `--curl-path` (and `POTTERYBARN_CURL` in `.env`) on `http_scraper.py` and
+  `api_scraper.py`: which curl binary to run. The sidecar records it as
+  `transport_facts.curl` (`path`, `version`, `tls`), and a curl whose default
+  TLS library is LibreSSL or SecureTransport is warned about on every run.
+  Measured 2026-11-24 on macOS: `/usr/bin/curl` 8.7.1 (LibreSSL 3.3.6) got
+  the 403 page on 8 of 8 US residential exits, Homebrew curl 8.0.1
+  (OpenSSL 1.1.1t) got the product page through the same exits and completed
+  3 of 3 runs, field-for-field identical to the Scraping Browser API. With
+  an OpenSSL curl, `api_scraper.py --url` also reads the category page
+  again (`group_id_source: page`, `key_source: page`) instead of guessing.
 
 ### Changed
 
@@ -85,6 +95,16 @@ behaviour for an existing user is called out at the top of its release.
   skips that section only, which names other repositories on purpose; every
   other part of the README and every other shipped file is still checked.
 - Proxy traffic meter: Selenium and Puppeteer no longer count requests that never leave the browser. Chrome's new-tab page loads `chrome://` scripts (about 2.8 MB, seen through a stub proxy) that were reported as finished loads and added to `proxy_bytes`, enough to bring a run noticeably closer to `--proxy-budget-mb`. Only `http(s)` requests and responses are counted now.
+- `http_scraper.py` no longer rotates the exit after the LAST attempt on a
+  refused page. With the defaults (`--retries 2`, `--proxy-block-retries 3`)
+  a blocked product sent 3 requests but minted 3 fresh sessions, so the
+  sidecar's `transport_facts.exit` named a session that never sent a request
+  and `rotations: 3` read as four exits tried (measured 2026-11-24, run
+  `7967dd2e4ddd`). The unused rotation also spent one unit of the run-wide
+  `--proxy-block-retries` budget. Side effect in a multi-URL run: the next
+  product now starts on the exit the previous one was refused on, and rotates
+  from there if the budget allows, instead of starting on a fresh exit.
+  Covered by `test_fetch_does_not_rotate_after_its_last_attempt`.
 
 ## [1.1.0] — 2026-10-16
 
