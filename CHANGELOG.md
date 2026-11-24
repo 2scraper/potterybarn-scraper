@@ -7,6 +7,18 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Tests only: `smoke_test.py` no longer reads the developer's real `.env`.
+  With `POTTERYBARN_PROXY` and `POTTERYBARN_CDP_ENDPOINT` set there, 18
+  proxy-budget and pre-check checks failed locally while CI (no `.env`) was
+  green, and the loaded values stayed in `os.environ` for every later test.
+  The suite now points `env_config.DEFAULT_ENV_PATH` (new: the one place the
+  default location is decided) at a file that does not exist, drops the
+  credential variables from its environment, and arms an audit hook that
+  makes any `open()` of the real `.env` a `PermissionError`. Nothing changes
+  for the scripts or for `python3 env_config.py`.
+
 ## [1.2.0] — 2026-11-24
 
 > **Behaviour changes.**

@@ -27,6 +27,7 @@ import subprocess
 import sys
 import tempfile
 from contextlib import redirect_stdout, redirect_stderr
+from pathlib import Path
 from typing import List
 from unittest import mock
 
@@ -58,6 +59,61 @@ def eq(name, got, want):
 def fixture(name):
     with open(os.path.join(FIXTURES, name), encoding="utf-8") as handle:
         return handle.read()
+
+
+# The developer's real .env sits next to this file. The suite must never read
+# it: with POTTERYBARN_PROXY and POTTERYBARN_CDP_ENDPOINT set there, 18
+# proxy-budget and pre-check checks failed on a dev machine while CI (no
+# .env) was green, and load_env() then left the values in os.environ for
+# every later test (measured 2026-11-24). `isolate_from_dotenv()` points
+# env_config at a file that does not exist, drops the credential variables
+# from the environment, and arms an audit hook that turns any open() of the
+# real file into a PermissionError -- so a future test that reaches it by
+# another route fails loudly instead of passing on one machine only.
+REAL_DOTENV = os.path.realpath(os.path.join(HERE, ".env"))
+_DOTENV_GUARD = {"armed": False}
+
+
+def _dotenv_guard(event, args):
+    if not _DOTENV_GUARD["armed"] or event != "open" or not args:
+        return
+    target = args[0]
+    if not isinstance(target, (str, bytes, os.PathLike)):
+        return  # an fd
+    try:
+        path = os.path.realpath(os.fsdecode(target))
+    except (TypeError, ValueError):
+        return
+    if path == REAL_DOTENV:
+        raise PermissionError("the offline suite must not read the real .env (%s)" % path)
+
+
+def isolate_from_dotenv():
+    import env_config
+    env_config.DEFAULT_ENV_PATH = Path(tempfile.gettempdir()) / (
+        "potterybarn-suite-no-dotenv-%d" % os.getpid()) / ".env"   # never created
+    for name in env_config.ENV_KEYS:
+        os.environ.pop(name, None)
+    if not _DOTENV_GUARD["armed"]:
+        sys.addaudithook(_dotenv_guard)
+        _DOTENV_GUARD["armed"] = True
+
+
+def test_suite_never_reads_the_real_dotenv():
+    import env_config
+    check("env_config's default .env is not the repo's during the suite",
+          os.path.realpath(env_config.DEFAULT_ENV_PATH) != REAL_DOTENV)
+    eq("...and it does not exist, so load_env() finds nothing", env_config.load_env(), None)
+    check("no credential variable reaches the suite from the caller's environment",
+          not any(os.environ.get(k) for k in env_config.ENV_KEYS))
+    try:
+        open(REAL_DOTENV).close()
+        raised = None
+    except PermissionError:
+        raised = "guard"
+    except OSError:
+        raised = "not guarded (the file is merely absent)"
+    eq("opening the real .env is refused by the guard, present or not", raised, "guard")
 
 
 def quiet(fn, *a, **kw):
@@ -2649,6 +2705,7 @@ def browser_bridge_help():
 
 
 def main():
+    isolate_from_dotenv()
     tests = [v for k, v in sorted(globals().items(), key=lambda kv: 0) if k.startswith("test_") and callable(v)]
     for test in tests:
         try:
