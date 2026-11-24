@@ -15,7 +15,11 @@ WORKDIR /app
 
 # curl is the product-page client — python-requests was refused 5 of 6 times
 # where curl got the page on 6 of 6 (2026-09-24). It is not in -slim.
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# libatomic1: Playwright's bundled Node driver needs it just to run
+# `playwright install --with-deps`, i.e. before that command can install any
+# system dependency itself. python:3.12-slim does not ship it; the build
+# failed with "libatomic.so.1: cannot open shared object file" (2026-11-24).
+RUN apt-get update && apt-get install -y --no-install-recommends curl libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-playwright.txt ./
