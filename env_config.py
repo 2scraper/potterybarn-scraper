@@ -77,7 +77,7 @@ _loaded_from = None
 # The one place the default `.env` location is decided. Every function below
 # that takes `path=None` reads THIS name at call time, so the offline suite
 # can point it somewhere empty: before it did, any test that ran a script's
-# parse_args() loaded the developer's real .env -- 18 checks failed on a
+# parse_args() loaded the developer's real .env -- 17 checks failed on a
 # machine with POTTERYBARN_PROXY set, and the values then stayed in
 # os.environ for every later test (measured 2026-11-24).
 DEFAULT_ENV_PATH = Path(__file__).resolve().parent / ".env"

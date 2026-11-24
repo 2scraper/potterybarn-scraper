@@ -10,7 +10,7 @@ behaviour for an existing user is called out at the top of its release.
 ### Fixed
 
 - Tests only: `smoke_test.py` no longer reads the developer's real `.env`.
-  With `POTTERYBARN_PROXY` and `POTTERYBARN_CDP_ENDPOINT` set there, 18
+  With `POTTERYBARN_PROXY` and `POTTERYBARN_CDP_ENDPOINT` set there, 17
   proxy-budget and pre-check checks failed locally while CI (no `.env`) was
   green, and the loaded values stayed in `os.environ` for every later test.
   The suite now points `env_config.DEFAULT_ENV_PATH` (new: the one place the

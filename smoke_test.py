@@ -62,7 +62,7 @@ def fixture(name):
 
 
 # The developer's real .env sits next to this file. The suite must never read
-# it: with POTTERYBARN_PROXY and POTTERYBARN_CDP_ENDPOINT set there, 18
+# it: with POTTERYBARN_PROXY and POTTERYBARN_CDP_ENDPOINT set there, 17
 # proxy-budget and pre-check checks failed on a dev machine while CI (no
 # .env) was green, and load_env() then left the values in os.environ for
 # every later test (measured 2026-11-24). `isolate_from_dotenv()` points
