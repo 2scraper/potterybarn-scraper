@@ -830,6 +830,36 @@ def test_fetch_rotates_on_a_refusal_not_on_a_timeout():
     eq("a timeout retried the SAME exit", (len(rotations), result.state), (0, "product"))
 
 
+def test_fetch_does_not_rotate_after_its_last_attempt():
+    """A rotation after the final attempt minted an exit that never sent a
+    request, and the sidecar's `exit` then named THAT exit as the one that
+    was refused (measured 2026-11-24: retries=2 sent 3 requests, minted 3
+    sessions, and `exit` pointed at the third, unused one)."""
+    import http_scraper
+
+    refused = http_scraper._Response(403, fixture("blocked_403_1326.html"), "https://www.potterybarn.com/p")
+    used, minted = [], []
+
+    class S:
+        def __init__(self, name):
+            self.name = name
+
+        def get(self, url, **kw):
+            used.append(self.name)
+            return refused
+
+    def rotate():
+        minted.append("exit%d" % (len(minted) + 1))
+        return S(minted[-1]), minted[-1]
+
+    result, session = http_scraper.fetch(S("exit0"), "u", 5, retries=2, retry_delay=0,
+                                         rotate=rotate)
+    eq("3 attempts went out on 3 exits", used, ["exit0", "exit1", "exit2"])
+    eq("...and only 2 rotations were made, none after the last attempt", minted, ["exit1", "exit2"])
+    eq("...the result names the exit that was actually refused",
+       (result.state, result.exit_used, session.name), ("blocked", "exit2", "exit2"))
+
+
 def test_default_client_is_the_measured_one():
     import http_scraper
     with mock.patch.object(http_scraper, "CURL_AVAILABLE", True):

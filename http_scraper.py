@@ -344,7 +344,13 @@ def fetch(session, url: str, timeout: int, *, retries: int = 2,
             if log:
                 log("  attempt %d/%d: %s (HTTP %s, %d bytes)"
                     % (attempt, attempts, state, last.status, len(last.html)))
-            if page_flow.should_rotate_exit(state) and rotate is not None:
+            # Only when another attempt will use it: a rotation after the last
+            # attempt minted an exit that never sent a request, and the
+            # sidecar's `exit` then named it as the refused one (measured
+            # 2026-11-24: 3 requests, 3 sessions minted, `exit` = the unused
+            # third). It also spent the run's --proxy-block-retries budget.
+            if (attempt < attempts and page_flow.should_rotate_exit(state)
+                    and rotate is not None):
                 rotated = rotate()
                 if rotated is not None:
                     session, exit_label = rotated
