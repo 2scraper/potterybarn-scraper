@@ -142,8 +142,14 @@ python3 http_scraper.py \
   --url https://www.potterybarn.com/products/york-slope-arm-deep-slipcovered-sofa-collection/ \
   --out skus
 
-# Every SKU of every product a listing run found
-python3 http_scraper.py --from-listing sofas.json --out sofa_skus
+# Every SKU of every product a listing run found. Without --proxy-rotate
+# per-page the whole batch shares one exit and ONE 3-rotation refusal budget
+# (--proxy-block-retries); once it is spent, every later product is fetched
+# from the refused exit. per-page takes a fresh exit (a new 2Captcha session)
+# for every product instead. It does not help when the site refuses every
+# exit: measured 2026-11-26 20:10, 15 fresh sessions and a single fetch were
+# all 403 — wait, then retry.
+python3 http_scraper.py --from-listing sofas.json --proxy-rotate per-page --out sofa_skus
 
 # Find targets without crawling
 python3 catalog_walk.py categories --leaf-only --grep sofa

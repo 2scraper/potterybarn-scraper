@@ -16,8 +16,39 @@ behaviour for an existing user is called out at the top of its release.
   far from its cause. The value is still loaded as written; nothing is
   rewritten. See TROUBLESHOOTING.
 
+- `http_scraper.py --proxy-rotate per-page` now does what it says: every
+  product after the first is fetched from a fresh exit (a newly minted
+  session on a 2Captcha gateway, the next `--proxy-file` entry otherwise),
+  without spending the run-wide `--proxy-block-retries` budget. Counted in
+  `transport_facts.page_rotations`. On one plain (non-gateway) exit the run
+  says there is nothing to rotate to. For `--urls-file` / `--from-listing`
+  batches it rules out the refused-exit failure below; it does not beat a
+  refusal of every exit (2026-11-26 20:10: 15 fresh sessions, all 403, run
+  `32d49c199a14`).
+- An `empty` product page now says what it most often means: check the URL
+  is a live product (a made-up slug was answered HTTP 200 with no product
+  state, run `8481328e15a9`). The exit code is unchanged (5).
+
+### Changed
+
+- **`--proxy-rotate per-page` is refused (exit 2) by `api_scraper.py` and the
+  browser engines** instead of being accepted and ignored. All three CLIs
+  took the flag and nothing read it (`ProxyPool.rotates_per_page()` had no
+  caller). A browser run keeps one browser and one exit, and the listing
+  script sends at most one request through the proxy, so neither has a page
+  to rotate on.
+- `--proxy-block-retries` help now says the budget is shared by the whole
+  run, not per product, which is how it has always worked.
+
 ### Fixed
 
+- `--proxy-rotate per-page` was silently ignored everywhere, and a single
+  `--proxy` was forced to `per-run` whatever was asked. Found after a
+  48-product batch (run `746c97ee08e5`, 2026-11-26) spent the 3-rotation
+  budget by product 10 and fetched products 11–48 from the refused exit:
+  9 fetched, 37 × 403, 2 transport errors. Whether fresh exits would have
+  got those 37 is not measured: the site was refusing every exit later
+  that day.
 - Tests only: `smoke_test.py` no longer reads the developer's real `.env`.
   With `POTTERYBARN_PROXY` and `POTTERYBARN_CDP_ENDPOINT` set there, 17
   proxy-budget and pre-check checks failed locally while CI (no `.env`) was
