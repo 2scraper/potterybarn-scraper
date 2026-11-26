@@ -7,6 +7,18 @@ behaviour for an existing user is called out at the top of its release.
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-11-26
+
+> **Behaviour changes.**
+> - `--proxy-rotate per-page` is now refused with exit 2 by `api_scraper.py`
+>   and the browser engines. It was accepted there before and did nothing,
+>   so a command that passed it now stops instead of running on one exit.
+>   `http_scraper.py` honours it (see Added).
+> - `.env` values with typographic quotes now print a warning on every load
+>   (key and line only). The value is still loaded as written.
+> - An `empty` product page prints a hint to check the URL. The exit code
+>   (5) is unchanged.
+
 ### Added
 
 - `.env` values holding typographic quotes (`“ ” ‘ ’ „ « »`, which macOS
