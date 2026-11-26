@@ -458,6 +458,26 @@ def announce_curl(session) -> Optional[Dict[str, Any]]:
     return dict(info)
 
 
+def next_exit_per_page(pool) -> Optional[str]:
+    """The exit for the next product under `--proxy-rotate per-page`, or None.
+
+    Separate from the refusal rotator on purpose: it does NOT spend the
+    run-wide `--proxy-block-retries` budget. Measured 2026-11-26 (run
+    `746c97ee08e5`, 48 products, defaults): that budget of 3 was gone by
+    product 10, and products 11-48 were all fetched from an exit the site had
+    already refused — 37 straight 403s. A fresh exit per product rules that
+    out; the budget stays for retrying a refused product. (It cannot beat a
+    refusal of EVERY exit: 15 fresh sessions the same evening were all 403.)
+    """
+    if pool is None or not pool.rotates_per_page():
+        return None
+    if proxy_pool.is_2captcha_gateway(pool.current) and len(pool) == 1:
+        return proxy_pool.mint_sessions(pool.current, 1)[0]
+    if len(pool) > 1:
+        return pool.advance("per-page")
+    return None
+
+
 def make_rotator(args, pool, facts: Dict[str, Any]):
     """A callable returning `(fresh session, masked exit)` or None.
 
@@ -559,6 +579,13 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
         "final_url": targets[0],
     }
     rotate = make_rotator(args, pool, facts)
+    if pool is not None and pool.rotates_per_page():
+        facts["page_rotations"] = 0
+        if len(pool) == 1 and not proxy_pool.is_2captcha_gateway(pool.current):
+            print("[!] --proxy-rotate per-page: one exit and not a 2Captcha gateway, "
+                  "so there is nothing to rotate to — every product uses %s. Pass "
+                  "--proxy-file with several exits." % proxy_pool.mask(pool.current),
+                  file=sys.stderr)
     rows: List[SkuRow] = []
     seen: set = set()
     for index, url in enumerate(targets, 1):
@@ -566,6 +593,14 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
             # --proxy-budget-mb: no further product page through the proxy.
             facts["unattempted_pages"] = list(range(index, len(targets) + 1))
             break
+        if index > 1:
+            fresh_exit = next_exit_per_page(pool)
+            if fresh_exit is not None:
+                session = build_session(fresh_exit, args.http_client,
+                                        getattr(args, "curl_path", None))
+                facts["exit"] = proxy_pool.mask(fresh_exit)
+                facts["page_rotations"] += 1
+                log("  per-page exit -> %s" % facts["exit"])
         log("product %d/%d: %s" % (index, len(targets), url))
         result, session = fetch(session, url, args.timeout, retries=args.retries,
                                 retry_delay=args.retry_delay, log=log,
@@ -583,9 +618,10 @@ def scrape(args) -> Tuple[List[SkuRow], Dict[str, Any]]:
                 facts["transport_error"] = True
             elif page_flow.counts_as_blocked(state):
                 facts["blocked"] = True
-            print("product %d: %s (HTTP %s, %d bytes)%s"
+            print("product %d: %s (HTTP %s, %d bytes)%s%s"
                   % (index, state, result.status, len(result.html),
-                     " — " + result.error if result.error else ""),
+                     " — " + result.error if result.error else "",
+                     P.EMPTY_PRODUCT_HINT if state == "empty" else ""),
                   file=sys.stderr)
             continue
         try:
@@ -712,14 +748,23 @@ def parse_args(argv=None):
                         "command line is visible to `ps`.")
     p.add_argument("--proxy-file", default=None)
     p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES,
-                   default="per-run")
+                   default="per-run",
+                   help="per-run keeps one exit for the run (default). "
+                        "per-page takes a fresh exit for every product — a new "
+                        "session on a 2Captcha gateway, the next entry of "
+                        "--proxy-file otherwise — without spending "
+                        "--proxy-block-retries. Use it for --urls-file / "
+                        "--from-listing batches.")
     p.add_argument("--proxy-shuffle", action="store_true")
     p.add_argument("--proxy-sessions", type=_positive_int, default=None,
                    help="Turn one 2Captcha proxy credential into N "
                         "session-pinned exits.")
     p.add_argument("--proxy-block-retries", type=_non_negative_int, default=3,
-                   help="How many times a refused page may move to a "
-                        "different exit before it is reported.")
+                   help="How many times the RUN may move to a different exit "
+                        "after a refusal — one budget shared by every product, "
+                        "not per product. Once spent, later products are "
+                        "fetched from the last (refused) exit; for a batch use "
+                        "--proxy-rotate per-page.")
     proxy_meter.add_budget_argument(p)
     args = p.parse_args(argv)
     env_config.apply(args, keys={k: v for k, v in env_config.ENV_KEYS.items()

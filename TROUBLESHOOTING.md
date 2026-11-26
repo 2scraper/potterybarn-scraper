@@ -29,6 +29,16 @@ The site refused. In order of likelihood:
    trial (0 of 19). Use `http_scraper.py`, or the Scraping Browser API.
 4. **A scored exit.** `states` shows `blocked` or `geo_redirect` after
    several rotations. Raise `--proxy-block-retries`, or wait.
+4a. **A batch that starts well and then refuses everything.** The first
+   products in `states` are `product`, the rest a solid run of `blocked`,
+   and `rotations` equals `--proxy-block-retries`. That budget is ONE for
+   the whole run, not per product: once it is spent, every later product is
+   fetched from the exit that was just refused (2026-11-26, run
+   `746c97ee08e5`, 48 products, defaults: 9 fetched, then 37 × 403).
+   `--proxy-rotate per-page` takes a fresh exit for every product without
+   spending that budget. It rules the exit out; it does not beat a refusal of
+   every exit — the same evening 15 fresh sessions and a single fetch were
+   all 403 (runs `32d49c199a14`, then one product alone). Then wait.
 
 Exit 3 is never a captcha on this site. No challenge has been met anywhere,
 so a solver key will not change it.
@@ -70,6 +80,11 @@ Our own plumbing failed, and the site never answered:
   connection`) worked on the same profile at the same time (2026-10-01).
 * **A timeout or a TLS error**: an exit that failed at the transport level.
   It is retried on the same exit, then reported.
+* **`product page: empty (HTTP 200, …)`**: the site served a page with no
+  product data on it. Check the URL first: a made-up slug was answered
+  exactly this way over the Scraping Browser (2026-11-26, run
+  `8481328e15a9`). It stays exit 5, not 4: a page without product state
+  cannot prove the product does not exist.
 
 ## A category returns 0 products (exit 4)
 

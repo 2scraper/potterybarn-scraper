@@ -916,6 +916,98 @@ def test_fetch_does_not_rotate_after_its_last_attempt():
        (result.state, result.exit_used, session.name), ("blocked", "exit2", "exit2"))
 
 
+def test_proxy_rotate_per_page_takes_a_fresh_exit_per_product():
+    """`--proxy-rotate per-page` was accepted by all three CLIs and read by
+    nothing (`ProxyPool.rotates_per_page()` had no caller). Found 2026-11-26
+    after a 48-product batch (run `746c97ee08e5`) spent the run-wide
+    --proxy-block-retries budget by product 10 and fetched products 11-48
+    from the refused exit. Live 2026-11-26 20:10 (run `32d49c199a14`):
+    15 products, 15 distinct sessions — the mechanism works; the site was
+    refusing every exit that evening, so it bought no rows."""
+    import http_scraper as H
+    import api_scraper
+    import browser_bridge
+    import proxy_pool
+
+    good = fixture("product_delaney.html")
+    built = []
+
+    class S:
+        def get(self, url, **kw):
+            return H._Response(200, good, url)
+
+    def fake_build(proxy, *a, **k):
+        built.append(proxy)
+        return S()
+    gateway = "http://user:pass@na.proxy.2captcha.com:2334"
+    urls = ["https://www.potterybarn.com/products/delaney-marble-end-table-%d/" % i
+            for i in range(3)]
+    argv = sum((["--url", u] for u in urls), []) + ["--proxy", gateway, "--delay", "0"]
+    tmp = tempfile.mkdtemp()
+    with mock.patch.object(H, "build_session", fake_build), \
+            mock.patch.object(H, "announce_curl", lambda s: None):
+        (rows, facts), _ = quiet(H.scrape, H.parse_args(argv + ["--proxy-rotate", "per-page",
+                                                                "--out", tmp + "/a"]))
+    eq("per-page on a gateway: one session per product", len(built), 3)
+    eq("...each one a different session", len(set(built)), 3)
+    eq("...counted apart from the refusal budget",
+       (facts.get("page_rotations"), facts["rotations"]), (2, 0))
+    check("...and the credential never reaches the facts",
+          "pass" not in json.dumps(facts))
+    built.clear()
+    with mock.patch.object(H, "build_session", fake_build), \
+            mock.patch.object(H, "announce_curl", lambda s: None):
+        (rows, facts), _ = quiet(H.scrape, H.parse_args(argv + ["--out", tmp + "/b"]))
+    eq("per-run (the default) keeps one exit for the run", len(built), 1)
+    check("...and reports no per-page rotations", "page_rotations" not in facts)
+
+    built.clear()
+    plain = "http://user:pass@203.0.113.7:8080"
+    argv = sum((["--url", u] for u in urls[:2]), []) + ["--proxy", plain, "--delay", "0",
+                                                         "--proxy-rotate", "per-page"]
+    with mock.patch.object(H, "build_session", fake_build), \
+            mock.patch.object(H, "announce_curl", lambda s: None):
+        (rows, facts), text = quiet(H.scrape, H.parse_args(argv + ["--out", tmp + "/c"]))
+    eq("one plain exit: nothing to rotate to, one session", len(built), 1)
+    check("...and that is said out loud, not silent", "nothing to rotate to" in text)
+
+    args = argparse.Namespace(proxy=gateway, proxy_file=None, proxy_rotate="per-page",
+                              proxy_sessions=None, proxy_shuffle=False)
+    check("a single --proxy keeps the mode it was given",
+          proxy_pool.from_args(args).rotates_per_page())
+
+    def refused(fn, *a):
+        try:
+            quiet(fn, *a)
+        except SystemExit as exc:
+            return exc.code
+        return None
+    eq("api_scraper refuses per-page with exit 2 instead of ignoring it",
+       refused(api_scraper.parse_args, ["--group-id", "g", "--proxy-rotate", "per-page"]), 2)
+    eq("the browser engines refuse per-page with exit 2 instead of ignoring it",
+       refused(browser_bridge.parse_args, browser_bridge.build_parser("t"),
+               ["--url", urls[0], "--proxy-rotate", "per-page"]), 2)
+
+
+def test_an_empty_product_page_names_the_likely_cause():
+    """A made-up slug over the Scraping Browser came back HTTP 200 with no
+    product state (2026-11-26, run `8481328e15a9`) and exited 5 with nothing
+    pointing at the URL. Exit 5 stays; the message now names the cause."""
+    import http_scraper as H
+    served = "<html><head><title>Pottery Barn</title></head><body>%s</body></html>" % ("x" * 9000)
+    eq("fixture classifies as empty", P.detect_page_state(served, status=200), "empty")
+
+    class S:
+        def get(self, url, **kw):
+            return H._Response(200, served, url)
+    tmp = tempfile.mkdtemp()
+    with mock.patch.object(H, "build_session", lambda *a, **k: S()):
+        rc, text = quiet(H.main, ["--url", "https://www.potterybarn.com/products/xyz-nope/",
+                                  "--out", tmp + "/a"])
+    eq("an empty product page still exits 5", rc, 5)
+    check("...and the message points at the URL", "check the URL is a live product" in text)
+
+
 def test_curl_tls_backend_is_read_and_a_refused_one_warned():
     """Measured 2026-11-24 on macOS, same exits, same headers: /usr/bin/curl
     (LibreSSL) got the 403 page on 6 of 6 exits, Homebrew curl (OpenSSL) got

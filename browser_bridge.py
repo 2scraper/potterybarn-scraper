@@ -398,8 +398,9 @@ def run(args, driver) -> int:
                 facts["failed_pages"].append(1)
                 facts["blocked"] = page_flow.counts_as_blocked(result["state"])
                 facts["transport_error"] = result["state"] == "transport_error"
-                print("product page: %s (HTTP %s, %d bytes)"
-                      % (result["state"], result["status"], len(result["html"])),
+                print("product page: %s (HTTP %s, %d bytes)%s"
+                      % (result["state"], result["status"], len(result["html"]),
+                         P.EMPTY_PRODUCT_HINT if result["state"] == "empty" else ""),
                       file=sys.stderr)
         else:
             key = P.FALLBACK_CONSTRUCTOR_KEY
@@ -578,7 +579,9 @@ def build_parser(description: str):
                         "--cdp-endpoint: the remote browser brings its own exit.")
     p.add_argument("--proxy-file", default=None)
     p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES,
-                   default="per-run")
+                   default="per-run",
+                   help="Only per-run is supported by a browser engine (see "
+                        "http_scraper.py for per-page).")
     p.add_argument("--proxy-shuffle", action="store_true")
     p.add_argument("--load-media", action="store_true",
                    help="Load images, video and web fonts. By default they are "
@@ -598,6 +601,13 @@ def build_parser(description: str):
 
 def parse_args(parser, argv=None):
     args = parser.parse_args(argv)
+    if args.proxy_rotate == "per-page":
+        # Accepted for years and read by nothing: a run keeps ONE browser, and
+        # a rotation must be a fresh browser, never a proxy swapped under a
+        # live session. Refused rather than silently ignored.
+        parser.error("--proxy-rotate per-page is not supported by the browser "
+                     "engines: a run keeps one browser and one exit. Product "
+                     "batches rotate per page in http_scraper.py.")
     typed_cdp = args.cdp_endpoint
     env_config.apply(args)
     if getattr(args, "fingerprint", False):

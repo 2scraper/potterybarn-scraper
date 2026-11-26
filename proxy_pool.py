@@ -430,7 +430,11 @@ def from_args(args) -> Optional[ProxyPool]:
         entry = parse_proxy_line(single, source="--proxy")
         if entry is None:
             raise ProxyError("--proxy was given but is empty")
-        return ProxyPool([entry], rotate="per-run")
+        # The mode is carried even for one exit: on a 2Captcha gateway a
+        # transport can still honour `per-page` by minting a fresh session per
+        # page (http_scraper does). Forcing `per-run` here made the flag
+        # silently inert for the most common configuration.
+        return ProxyPool([entry], rotate=rotate)
 
     return None
 

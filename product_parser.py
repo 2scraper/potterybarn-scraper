@@ -245,6 +245,17 @@ def page_shape(html: str) -> Dict[str, Any]:
     return shape
 
 
+# Printed beside an `empty` product page. Exit 5 stays ("the content was
+# never obtained"): a served page with no `productDetails` cannot tell a
+# product that does not exist from one whose state failed to load, so calling
+# it "no products" (exit 4) would be a claim the run cannot make. But the most
+# common cause is a wrong URL — measured 2026-11-26 over the Scraping Browser
+# (run `8481328e15a9`): a made-up slug was answered HTTP 200, no product state.
+EMPTY_PRODUCT_HINT = (" — a served page with no product data; check the URL is "
+                      "a live product (a nonexistent slug is answered exactly "
+                      "like this, HTTP 200)")
+
+
 def detect_page_state(html: str, *, status: Optional[int] = None,
                       url: Optional[str] = None,
                       headers: Optional[Dict[str, str]] = None) -> str:

@@ -527,12 +527,22 @@ def parse_args(argv=None):
     http_scraper.add_curl_path_arg(p)
     p.add_argument("--proxy", default=None)
     p.add_argument("--proxy-file", default=None)
-    p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES, default="per-run")
+    p.add_argument("--proxy-rotate", choices=proxy_pool.ROTATE_MODES, default="per-run",
+                   help="Only per-run is supported here (see http_scraper.py "
+                        "for per-page).")
     p.add_argument("--proxy-shuffle", action="store_true")
     p.add_argument("--proxy-sessions", type=_positive_int, default=None)
     p.add_argument("--proxy-block-retries", type=_non_negative_int, default=3)
     proxy_meter.add_budget_argument(p)
     args = p.parse_args(argv)
+    if args.proxy_rotate == "per-page":
+        # Accepted for years and read by nothing. The proxy carries at most ONE
+        # request here (the category page, for its key); API pages go direct
+        # unless --api-via-proxy, and then over one session.
+        p.error("--proxy-rotate per-page is not supported by api_scraper.py: the "
+                "proxy carries one category-page request per run, so there is no "
+                "page to rotate on. Product batches rotate per page in "
+                "http_scraper.py.")
     # POTTERYBARN_URL is documented as the page a BROWSER engine fetches — in
     # practice a product page. Applied blindly here it hijacked a typed
     # `--group-id sofa` and refused the run as "not a category page". So the
